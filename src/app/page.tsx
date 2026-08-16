@@ -34,9 +34,11 @@ export default function HomePage() {
         Get a text when Handshake tasks show up.
       </h1>
       <p className="mt-4 text-lg leading-relaxed text-zinc-600">
-        Sign in with your phone, add projects, and turn alerts on. We check
-        about every 10 minutes. You choose how many texts you get, then we stop
-        until you turn alerts back on.
+        Sign in with your phone and add the Handshake projects you care about.
+        About every 10 minutes we check each project for claimable tasks. If we
+        find more than two waiting, we text you. You choose how many of those
+        texts to get; after that we pause that project for an hour, then start
+        again.
       </p>
       <Link
         href="/sign-in"

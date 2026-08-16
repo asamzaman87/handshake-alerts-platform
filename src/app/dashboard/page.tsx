@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, ReactNode, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -10,11 +10,34 @@ import {
   type Project,
 } from "@/lib/api";
 
+function OutlinedField({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <fieldset className="min-w-0 rounded-md border border-zinc-900 px-3 pb-1.5 pt-0.5">
+      <legend className="px-1 text-[13px] leading-none text-zinc-900">{label}</legend>
+      {children}
+    </fieldset>
+  );
+}
+
+function formatCooldown(iso: string) {
+  return new Date(iso).toLocaleString(undefined, {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 export default function DashboardPage() {
   const router = useRouter();
   const [ready, setReady] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
   const [projectId, setProjectId] = useState("");
+  const [displayName, setDisplayName] = useState("");
   const [maxAlertCount, setMaxAlertCount] = useState(1);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -43,6 +66,20 @@ export default function DashboardPage() {
       .finally(() => setReady(true));
   }, [router]);
 
+  useEffect(() => {
+    const next = projects
+      .map((p) => p.alertsCooldownUntil)
+      .filter((value): value is string => Boolean(value))
+      .map((value) => new Date(value).getTime())
+      .filter((time) => time > Date.now())
+      .sort((a, b) => a - b)[0];
+    if (!next) return;
+    const id = window.setTimeout(() => {
+      load().catch(() => {});
+    }, next - Date.now() + 750);
+    return () => window.clearTimeout(id);
+  }, [projects]);
+
   async function addProject(e: FormEvent) {
     e.preventDefault();
     setError("");
@@ -53,10 +90,12 @@ export default function DashboardPage() {
         method: "POST",
         body: JSON.stringify({
           handshakeProjectId: projectId.trim(),
+          displayName: displayName.trim() || undefined,
           maxAlertCount,
         }),
       });
       setProjectId("");
+      setDisplayName("");
       setMaxAlertCount(1);
       await load();
     } catch (err) {
@@ -131,10 +170,12 @@ export default function DashboardPage() {
         </button>
       </div>
 
-      <p className="mt-3 text-sm text-zinc-600">
-        We check about every 10 minutes. Default is 1 alert, then we stop polling
-        that project until you turn alerts back on. Set 3 to get up to three
-        texts over about 30 minutes.
+      <p className="mt-3 text-sm leading-relaxed text-zinc-600">
+        We check each of your projects for claimable tasks about every 10 minutes.
+        If a project has more than 2 tasks waiting, we send you one text. We can
+        keep texting on later checks, up to the max alerts you set for that
+        project. After that, we pause that project for one hour, then the count
+        resets and alerts start again on their own.
       </p>
 
       <form
@@ -142,29 +183,67 @@ export default function DashboardPage() {
         className="mt-6 rounded-xl border border-zinc-200 bg-white p-4"
       >
         <h2 className="text-sm font-medium">Add project</h2>
-        <div className="mt-3 grid gap-3 sm:grid-cols-[1fr_120px_auto]">
-          <input
-            className="rounded-lg border border-zinc-300 px-3 py-2 text-sm"
-            placeholder="Project ID (UUID)"
-            value={projectId}
-            onChange={(e) => setProjectId(e.target.value)}
-            required
-          />
-          <input
-            type="number"
-            min={1}
-            max={12}
-            className="rounded-lg border border-zinc-300 px-3 py-2 text-sm"
-            value={maxAlertCount}
-            onChange={(e) => setMaxAlertCount(Number(e.target.value))}
-            aria-label="Max alerts"
-          />
-          <button
-            disabled={busy}
-            className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-          >
-            {busy ? "Checking…" : "Add"}
-          </button>
+        <details className="mt-2">
+          <summary className="cursor-pointer text-sm text-zinc-600 hover:text-zinc-900">
+            How to find your project ID
+          </summary>
+          <div className="mt-3 space-y-3">
+            <a
+              href="https://youtu.be/1g_bKwVpHvM"
+              target="_blank"
+              rel="noreferrer"
+              className="text-sm text-zinc-800 underline underline-offset-2"
+            >
+              Watch the walkthrough
+            </a>
+            <div className="aspect-video overflow-hidden rounded-lg border border-zinc-200 bg-zinc-100">
+              <iframe
+                className="h-full w-full"
+                src="https://www.youtube-nocookie.com/embed/1g_bKwVpHvM"
+                title="How to find your Handshake project ID"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+              />
+            </div>
+          </div>
+        </details>
+        <div className="mt-4 grid gap-4">
+          <OutlinedField label="Project name">
+            <input
+              className="w-full bg-transparent py-1.5 text-sm outline-none"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+            />
+          </OutlinedField>
+          <OutlinedField label="Project ID">
+            <input
+              className="w-full bg-transparent py-1.5 font-mono text-sm outline-none"
+              value={projectId}
+              onChange={(e) => setProjectId(e.target.value)}
+              required
+            />
+          </OutlinedField>
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="w-40">
+              <OutlinedField label="Max alerts">
+                <input
+                  type="number"
+                  min={1}
+                  max={12}
+                  className="w-full bg-transparent py-1.5 text-sm outline-none"
+                  value={maxAlertCount}
+                  onChange={(e) => setMaxAlertCount(Number(e.target.value))}
+                  required
+                />
+              </OutlinedField>
+            </div>
+            <button
+              disabled={busy}
+              className="rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50"
+            >
+              {busy ? "Checking…" : "Add"}
+            </button>
+          </div>
         </div>
       </form>
 
@@ -187,7 +266,12 @@ export default function DashboardPage() {
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <p className="font-mono text-sm">{project.handshakeProjectId}</p>
+                  <p className="font-medium">
+                    {project.displayName || "Untitled project"}
+                  </p>
+                  <p className="mt-0.5 font-mono text-xs text-zinc-500">
+                    {project.handshakeProjectId}
+                  </p>
                   <p className="mt-1 text-xs text-zinc-500">
                     Last check:{" "}
                     {project.lastPolledAt
@@ -212,6 +296,13 @@ export default function DashboardPage() {
                   />
                 </label>
               </div>
+              {project.onCooldown && project.alertsCooldownUntil ? (
+                <p className="mt-3 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                  Cooling down until {formatCooldown(project.alertsCooldownUntil)}.
+                  We will start checking this project again then, with a fresh
+                  alert count.
+                </p>
+              ) : null}
               <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
                 <label className="flex items-center gap-2">
                   Max alerts
@@ -232,7 +323,9 @@ export default function DashboardPage() {
                   />
                 </label>
                 <span className="text-zinc-500">
-                  {project.remainingAlerts} remaining
+                  {project.onCooldown
+                    ? "0 remaining until cooldown ends"
+                    : `${project.remainingAlerts} remaining`}
                 </span>
                 <button
                   className="rounded border border-zinc-300 px-3 py-1 hover:bg-zinc-50"

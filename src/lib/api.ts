@@ -41,10 +41,13 @@ export async function api<T>(
 export type Project = {
   id: string;
   handshakeProjectId: string;
+  displayName: string | null;
   alertsEnabled: boolean;
   maxAlertCount: number;
   alertsSentCount: number;
   remainingAlerts: number;
+  alertsCooldownUntil: string | null;
+  onCooldown: boolean;
   lastAvailableCount: number | null;
   lastPolledAt: string | null;
   lastAlertedAt: string | null;
