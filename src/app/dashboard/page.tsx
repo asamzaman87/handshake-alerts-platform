@@ -157,6 +157,12 @@ function clampInt(raw: string, min: number, max: number): number {
   return Math.min(max, Math.max(min, Math.round(n)));
 }
 
+function tasksFoundLabel(count: number) {
+  if (count === 0) return "no tasks found";
+  if (count === 1) return "1 task found";
+  return `${count} tasks found`;
+}
+
 function formatCooldown(iso: string) {
   return new Date(iso).toLocaleString(undefined, {
     hour: "numeric",
@@ -263,8 +269,8 @@ export default function DashboardPage() {
       );
       setNotice(
         data.availableCount > 2
-          ? `Tasks found: ${data.availableCount} claimable (this does not send an SMS).`
-          : `No alert threshold hit. Claimable tasks: ${data.availableCount}.`
+          ? `${tasksFoundLabel(data.availableCount)} (this does not send an SMS).`
+          : `No alert threshold hit. ${tasksFoundLabel(data.availableCount)}.`
       );
       await load();
     } catch (err) {
@@ -389,16 +395,13 @@ export default function DashboardPage() {
                   <p className="font-medium">
                     {project.displayName || "Untitled project"}
                   </p>
-                  <p className="mt-0.5 font-mono text-xs text-zinc-500">
-                    {project.handshakeProjectId}
-                  </p>
                   <p className="mt-1 text-xs text-zinc-500">
                     Last check:{" "}
                     {project.lastPolledAt
                       ? new Date(project.lastPolledAt).toLocaleString()
                       : "never"}
                     {project.lastAvailableCount != null
-                      ? ` · ${project.lastAvailableCount} claimable`
+                      ? ` · ${tasksFoundLabel(project.lastAvailableCount)}`
                       : ""}
                   </p>
                 </div>
