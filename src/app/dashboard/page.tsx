@@ -37,7 +37,6 @@ export default function DashboardPage() {
   const [ready, setReady] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
   const [projectId, setProjectId] = useState("");
-  const [displayName, setDisplayName] = useState("");
   const [maxAlertCount, setMaxAlertCount] = useState(1);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -90,12 +89,10 @@ export default function DashboardPage() {
         method: "POST",
         body: JSON.stringify({
           handshakeProjectId: projectId.trim(),
-          displayName: displayName.trim() || undefined,
           maxAlertCount,
         }),
       });
       setProjectId("");
-      setDisplayName("");
       setMaxAlertCount(1);
       await load();
     } catch (err) {
@@ -183,38 +180,17 @@ export default function DashboardPage() {
         className="mt-6 rounded-xl border border-zinc-200 bg-white p-4"
       >
         <h2 className="text-sm font-medium">Add project</h2>
-        <details className="mt-2">
-          <summary className="cursor-pointer text-sm text-zinc-600 hover:text-zinc-900">
-            How to find your project ID
-          </summary>
-          <div className="mt-3 space-y-3">
-            <a
-              href="https://youtu.be/1g_bKwVpHvM"
-              target="_blank"
-              rel="noreferrer"
-              className="text-sm text-zinc-800 underline underline-offset-2"
-            >
-              Watch the walkthrough
-            </a>
-            <div className="aspect-video overflow-hidden rounded-lg border border-zinc-200 bg-zinc-100">
-              <iframe
-                className="h-full w-full"
-                src="https://www.youtube-nocookie.com/embed/1g_bKwVpHvM"
-                title="How to find your Handshake project ID"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                allowFullScreen
-              />
-            </div>
-          </div>
-        </details>
+        <p className="mt-1 text-sm text-zinc-600">How to find your project ID</p>
+        <div className="mt-3 aspect-video overflow-hidden rounded-lg border border-zinc-200 bg-zinc-100">
+          <iframe
+            className="h-full w-full"
+            src="https://www.youtube-nocookie.com/embed/1g_bKwVpHvM"
+            title="How to find your Handshake project ID"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            allowFullScreen
+          />
+        </div>
         <div className="mt-4 grid gap-4">
-          <OutlinedField label="Project name">
-            <input
-              className="w-full bg-transparent py-1.5 text-sm outline-none"
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-            />
-          </OutlinedField>
           <OutlinedField label="Project ID">
             <input
               className="w-full bg-transparent py-1.5 font-mono text-sm outline-none"
