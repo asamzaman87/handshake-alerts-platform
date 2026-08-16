@@ -151,6 +151,30 @@ function AlertsToggle({
   );
 }
 
+function DecreaseBlockedModal({
+  message,
+  onClose,
+}: {
+  message: string;
+  onClose: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+      <div className="w-full max-w-sm rounded-xl bg-white p-5 shadow-lg">
+        <p className="font-medium">Can't lower this setting</p>
+        <p className="mt-2 text-sm leading-relaxed text-zinc-600">{message}</p>
+        <button
+          type="button"
+          className="mt-4 w-full rounded-lg bg-zinc-900 py-2 text-sm font-medium text-white"
+          onClick={onClose}
+        >
+          OK
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function clampInt(raw: string, min: number, max: number): number {
   const n = Number(raw);
   if (!Number.isFinite(n)) return min;
@@ -181,6 +205,7 @@ export default function DashboardPage() {
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
   const [testingId, setTestingId] = useState<string | null>(null);
+  const [blockedMessage, setBlockedMessage] = useState("");
 
   async function load() {
     const data = await api<{ projects: Project[] }>("/api/handshake/projects");
@@ -426,16 +451,20 @@ export default function DashboardPage() {
                 <OutlinedField label="Max alerts" hint={HINTS.maxAlerts}>
                   <input
                     type="number"
-                    min={1}
+                    min={project.maxAlertCount}
                     max={12}
                     className="w-full bg-transparent py-1.5 text-sm outline-none"
                     defaultValue={project.maxAlertCount}
                     key={`${project.id}-max-${project.maxAlertCount}`}
-                    onChange={(e) => {
-                      e.target.value = String(clampInt(e.target.value, 1, 12));
-                    }}
                     onBlur={(e) => {
                       const value = clampInt(e.target.value, 1, 12);
+                      if (value < project.maxAlertCount) {
+                        e.target.value = String(project.maxAlertCount);
+                        setBlockedMessage(
+                          "You can't lower max alerts on a project that's already added. Delete the project and add it again if you want a smaller number."
+                        );
+                        return;
+                      }
                       e.target.value = String(value);
                       if (value !== project.maxAlertCount) {
                         patch(project.id, { maxAlertCount: value }).catch((err) =>
@@ -445,28 +474,44 @@ export default function DashboardPage() {
                     }}
                   />
                 </OutlinedField>
-                <OutlinedField label="Cooldown hours" hint={HINTS.cooldownHours}>
-                  <input
-                    type="number"
-                    min={1}
-                    max={72}
-                    className="w-full bg-transparent py-1.5 text-sm outline-none"
-                    defaultValue={project.alertCooldownHours ?? 3}
-                    key={`${project.id}-cd-${project.alertCooldownHours ?? 3}`}
-                    onChange={(e) => {
-                      e.target.value = String(clampInt(e.target.value, 1, 72));
-                    }}
-                    onBlur={(e) => {
-                      const value = clampInt(e.target.value, 1, 72);
-                      e.target.value = String(value);
-                      if (value !== project.alertCooldownHours) {
-                        patch(project.id, { alertCooldownHours: value }).catch((err) =>
-                          setError(err instanceof Error ? err.message : "Update failed")
-                        );
-                      }
-                    }}
-                  />
-                </OutlinedField>
+                {project.onCooldown ? (
+                  <OutlinedField label="Cooldown hours" hint={HINTS.cooldownHours} muted>
+                    <input
+                      readOnly
+                      className="w-full cursor-default bg-transparent py-1.5 text-sm text-zinc-400 outline-none"
+                      value={project.alertCooldownHours ?? 3}
+                      tabIndex={-1}
+                    />
+                  </OutlinedField>
+                ) : (
+                  <OutlinedField label="Cooldown hours" hint={HINTS.cooldownHours}>
+                    <input
+                      type="number"
+                      min={project.alertCooldownHours ?? 3}
+                      max={72}
+                      className="w-full bg-transparent py-1.5 text-sm outline-none"
+                      defaultValue={project.alertCooldownHours ?? 3}
+                      key={`${project.id}-cd-${project.alertCooldownHours ?? 3}`}
+                      onBlur={(e) => {
+                        const current = project.alertCooldownHours ?? 3;
+                        const value = clampInt(e.target.value, 1, 72);
+                        if (value < current) {
+                          e.target.value = String(current);
+                          setBlockedMessage(
+                            "You can't lower cooldown hours on a project that's already added. Delete the project and add it again if you want a shorter cooldown."
+                          );
+                          return;
+                        }
+                        e.target.value = String(value);
+                        if (value !== current) {
+                          patch(project.id, { alertCooldownHours: value }).catch((err) =>
+                            setError(err instanceof Error ? err.message : "Update failed")
+                          );
+                        }
+                      }}
+                    />
+                  </OutlinedField>
+                )}
                 <OutlinedField label="Alerts left this round" hint={HINTS.remaining} muted>
                   <input
                     readOnly
@@ -499,6 +544,12 @@ export default function DashboardPage() {
           ))}
         </ul>
       )}
+      {blockedMessage ? (
+        <DecreaseBlockedModal
+          message={blockedMessage}
+          onClose={() => setBlockedMessage("")}
+        />
+      ) : null}
     </main>
   );
 }
