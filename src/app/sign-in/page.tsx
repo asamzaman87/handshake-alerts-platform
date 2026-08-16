@@ -59,7 +59,7 @@ export default function SignInPage() {
       </Link>
       <h1 className="mt-4 text-2xl font-semibold">Sign in with your phone</h1>
       <p className="mt-2 text-sm text-zinc-600">
-        We will text you a 6-digit code. No email required.
+        We will text you a verification code. No email required.
       </p>
 
       {step === "phone" ? (
@@ -91,9 +91,10 @@ export default function SignInPage() {
             <input
               className="mt-1 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 tracking-widest"
               value={code}
-              onChange={(e) => setCode(e.target.value)}
+              onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 10))}
               inputMode="numeric"
-              maxLength={6}
+              autoComplete="one-time-code"
+              maxLength={10}
               required
             />
           </label>
