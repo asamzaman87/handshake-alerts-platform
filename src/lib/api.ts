@@ -46,6 +46,7 @@ export type Project = {
   maxAlertCount: number;
   alertsSentCount: number;
   remainingAlerts: number;
+  alertCooldownHours: number;
   alertsCooldownUntil: string | null;
   onCooldown: boolean;
   lastAvailableCount: number | null;

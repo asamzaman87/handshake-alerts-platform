@@ -38,6 +38,7 @@ export default function DashboardPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [projectId, setProjectId] = useState("");
   const [maxAlertCount, setMaxAlertCount] = useState(1);
+  const [cooldownHours, setCooldownHours] = useState(3);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
@@ -90,10 +91,12 @@ export default function DashboardPage() {
         body: JSON.stringify({
           handshakeProjectId: projectId.trim(),
           maxAlertCount,
+          alertCooldownHours: cooldownHours,
         }),
       });
       setProjectId("");
       setMaxAlertCount(1);
+      setCooldownHours(3);
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to add project");
@@ -171,8 +174,9 @@ export default function DashboardPage() {
         We check each of your projects for claimable tasks about every 10 minutes.
         If a project has more than 2 tasks waiting, we send you one text. We can
         keep texting on later checks, up to the max alerts you set for that
-        project. After that, we pause that project for one hour, then the count
-        resets and alerts start again on their own.
+        project. After that, we pause that project for the cooldown you set
+        (3 hours by default), then the count resets and alerts start again on
+        their own.
       </p>
 
       <form
@@ -209,6 +213,19 @@ export default function DashboardPage() {
                   className="w-full bg-transparent py-1.5 text-sm outline-none"
                   value={maxAlertCount}
                   onChange={(e) => setMaxAlertCount(Number(e.target.value))}
+                  required
+                />
+              </OutlinedField>
+            </div>
+            <div className="w-44">
+              <OutlinedField label="Cooldown hours">
+                <input
+                  type="number"
+                  min={1}
+                  max={72}
+                  className="w-full bg-transparent py-1.5 text-sm outline-none"
+                  value={cooldownHours}
+                  onChange={(e) => setCooldownHours(Number(e.target.value))}
                   required
                 />
               </OutlinedField>
@@ -292,6 +309,24 @@ export default function DashboardPage() {
                       const value = Number(e.target.value);
                       if (value !== project.maxAlertCount) {
                         patch(project.id, { maxAlertCount: value }).catch((err) =>
+                          setError(err instanceof Error ? err.message : "Update failed")
+                        );
+                      }
+                    }}
+                  />
+                </label>
+                <label className="flex items-center gap-2">
+                  Cooldown hours
+                  <input
+                    type="number"
+                    min={1}
+                    max={72}
+                    className="w-16 rounded border border-zinc-300 px-2 py-1"
+                    defaultValue={project.alertCooldownHours ?? 3}
+                    onBlur={(e) => {
+                      const value = Number(e.target.value);
+                      if (value !== project.alertCooldownHours) {
+                        patch(project.id, { alertCooldownHours: value }).catch((err) =>
                           setError(err instanceof Error ? err.message : "Update failed")
                         );
                       }

@@ -37,8 +37,8 @@ export default function HomePage() {
         Sign in with your phone and add the Handshake projects you care about.
         About every 10 minutes we check each project for claimable tasks. If we
         find more than two waiting, we text you. You choose how many of those
-        texts to get; after that we pause that project for an hour, then start
-        again.
+        texts to get; after that we pause that project for the cooldown you
+        set (3 hours by default), then start again.
       </p>
       <Link
         href="/sign-in"
