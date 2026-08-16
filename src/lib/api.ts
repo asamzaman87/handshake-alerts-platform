@@ -1,7 +1,7 @@
 const TOKEN_KEY = "handshake-alerts-token";
 
 export function getApiBase() {
-  return (process.env.NEXT_PUBLIC_READEON_API_URL ?? "https://www.readeon.com").replace(/\/$/, "");
+  return "";
 }
 
 export function getToken() {

@@ -50,7 +50,11 @@ export default function SignInPage() {
 
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6">
-      <Link href="/" className="text-sm text-zinc-500 hover:text-zinc-800">
+      <Link
+        href="/"
+        className="inline-flex items-center gap-1.5 text-sm text-zinc-500 hover:text-zinc-800"
+      >
+        <span aria-hidden="true">&larr;</span>
         Back
       </Link>
       <h1 className="mt-4 text-2xl font-semibold">Sign in with your phone</h1>
