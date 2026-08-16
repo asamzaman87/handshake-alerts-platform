@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, ReactNode, useEffect, useState } from "react";
+import { FormEvent, ReactNode, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -10,19 +10,107 @@ import {
   type Project,
 } from "@/lib/api";
 
+const HINTS = {
+  projectId:
+    "The Handshake project UUID from the project page. The video above shows where to copy it.",
+  maxAlerts:
+    "How many texts we will send for this project when tasks show up, before we pause. We send at most one text per check.",
+  cooldownHours:
+    "After we hit max alerts, we stop texting this project for this many hours. Then the count resets and we start again.",
+  remaining:
+    "How many texts we can still send before this project pauses. This drops as we text you, and it cannot go above Max alerts.",
+};
+
+function FieldHint({ text }: { text: string }) {
+  const [open, setOpen] = useState(false);
+  const [pinned, setPinned] = useState(false);
+  const wrapRef = useRef<HTMLSpanElement>(null);
+
+  useEffect(() => {
+    if (!pinned) return;
+    function onPointerDown(event: MouseEvent) {
+      if (wrapRef.current && !wrapRef.current.contains(event.target as Node)) {
+        setPinned(false);
+        setOpen(false);
+      }
+    }
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setPinned(false);
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [pinned]);
+
+  return (
+    <span ref={wrapRef} className="relative ml-0.5 inline-flex">
+      <button
+        type="button"
+        aria-label="More information"
+        aria-expanded={open}
+        className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-zinc-500 text-[10px] font-medium leading-none text-zinc-600 hover:bg-zinc-100"
+        onMouseEnter={() => setOpen(true)}
+        onMouseLeave={() => {
+          if (!pinned) setOpen(false);
+        }}
+        onClick={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          setPinned((current) => {
+            const next = !current;
+            setOpen(next);
+            return next;
+          });
+        }}
+      >
+        ?
+      </button>
+      {open ? (
+        <span
+          role="tooltip"
+          className="absolute left-0 top-5 z-30 w-56 rounded-md border border-zinc-200 bg-white p-2 text-left text-xs font-normal leading-snug text-zinc-700 shadow-md"
+          onMouseEnter={() => setOpen(true)}
+          onMouseLeave={() => {
+            if (!pinned) setOpen(false);
+          }}
+        >
+          {text}
+        </span>
+      ) : null}
+    </span>
+  );
+}
+
 function OutlinedField({
   label,
+  hint,
   children,
 }: {
   label: string;
+  hint?: string;
   children: ReactNode;
 }) {
   return (
-    <fieldset className="min-w-0 rounded-md border border-zinc-900 px-3 pb-1.5 pt-0.5">
-      <legend className="px-1 text-[13px] leading-none text-zinc-900">{label}</legend>
+    <fieldset className="relative min-w-0 rounded-md border border-zinc-900 px-3 pb-1.5 pt-0.5">
+      <legend className="inline-flex items-center px-1 text-[13px] leading-none text-zinc-900">
+        {label}
+        {hint ? <FieldHint text={hint} /> : null}
+      </legend>
       {children}
     </fieldset>
   );
+}
+
+function clampInt(raw: string, min: number, max: number): number {
+  const n = Number(raw);
+  if (!Number.isFinite(n)) return min;
+  return Math.min(max, Math.max(min, Math.round(n)));
 }
 
 function formatCooldown(iso: string) {
@@ -195,7 +283,7 @@ export default function DashboardPage() {
           />
         </div>
         <div className="mt-4 grid gap-4">
-          <OutlinedField label="Project ID">
+          <OutlinedField label="Project ID" hint={HINTS.projectId}>
             <input
               className="w-full bg-transparent py-1.5 font-mono text-sm outline-none"
               value={projectId}
@@ -205,27 +293,27 @@ export default function DashboardPage() {
           </OutlinedField>
           <div className="flex flex-wrap items-end gap-3">
             <div className="w-40">
-              <OutlinedField label="Max alerts">
+              <OutlinedField label="Max alerts" hint={HINTS.maxAlerts}>
                 <input
                   type="number"
                   min={1}
                   max={12}
                   className="w-full bg-transparent py-1.5 text-sm outline-none"
                   value={maxAlertCount}
-                  onChange={(e) => setMaxAlertCount(Number(e.target.value))}
+                  onChange={(e) => setMaxAlertCount(clampInt(e.target.value, 1, 12))}
                   required
                 />
               </OutlinedField>
             </div>
             <div className="w-44">
-              <OutlinedField label="Cooldown hours">
+              <OutlinedField label="Cooldown hours" hint={HINTS.cooldownHours}>
                 <input
                   type="number"
                   min={1}
                   max={72}
                   className="w-full bg-transparent py-1.5 text-sm outline-none"
                   value={cooldownHours}
-                  onChange={(e) => setCooldownHours(Number(e.target.value))}
+                  onChange={(e) => setCooldownHours(clampInt(e.target.value, 1, 72))}
                   required
                 />
               </OutlinedField>
@@ -296,17 +384,21 @@ export default function DashboardPage() {
                   alert count.
                 </p>
               ) : null}
-              <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
-                <label className="flex items-center gap-2">
-                  Max alerts
+              <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                <OutlinedField label="Max alerts" hint={HINTS.maxAlerts}>
                   <input
                     type="number"
                     min={1}
                     max={12}
-                    className="w-16 rounded border border-zinc-300 px-2 py-1"
+                    className="w-full bg-transparent py-1.5 text-sm outline-none"
                     defaultValue={project.maxAlertCount}
+                    key={`${project.id}-max-${project.maxAlertCount}`}
+                    onChange={(e) => {
+                      e.target.value = String(clampInt(e.target.value, 1, 12));
+                    }}
                     onBlur={(e) => {
-                      const value = Number(e.target.value);
+                      const value = clampInt(e.target.value, 1, 12);
+                      e.target.value = String(value);
                       if (value !== project.maxAlertCount) {
                         patch(project.id, { maxAlertCount: value }).catch((err) =>
                           setError(err instanceof Error ? err.message : "Update failed")
@@ -314,17 +406,21 @@ export default function DashboardPage() {
                       }
                     }}
                   />
-                </label>
-                <label className="flex items-center gap-2">
-                  Cooldown hours
+                </OutlinedField>
+                <OutlinedField label="Cooldown hours" hint={HINTS.cooldownHours}>
                   <input
                     type="number"
                     min={1}
                     max={72}
-                    className="w-16 rounded border border-zinc-300 px-2 py-1"
+                    className="w-full bg-transparent py-1.5 text-sm outline-none"
                     defaultValue={project.alertCooldownHours ?? 3}
+                    key={`${project.id}-cd-${project.alertCooldownHours ?? 3}`}
+                    onChange={(e) => {
+                      e.target.value = String(clampInt(e.target.value, 1, 72));
+                    }}
                     onBlur={(e) => {
-                      const value = Number(e.target.value);
+                      const value = clampInt(e.target.value, 1, 72);
+                      e.target.value = String(value);
                       if (value !== project.alertCooldownHours) {
                         patch(project.id, { alertCooldownHours: value }).catch((err) =>
                           setError(err instanceof Error ? err.message : "Update failed")
@@ -332,12 +428,17 @@ export default function DashboardPage() {
                       }
                     }}
                   />
-                </label>
-                <span className="text-zinc-500">
-                  {project.onCooldown
-                    ? "0 remaining until cooldown ends"
-                    : `${project.remainingAlerts} remaining`}
-                </span>
+                </OutlinedField>
+                <OutlinedField label="Alerts left this round" hint={HINTS.remaining}>
+                  <input
+                    readOnly
+                    className="w-full cursor-default bg-transparent py-1.5 text-sm text-zinc-700 outline-none"
+                    value={project.remainingAlerts}
+                    tabIndex={-1}
+                  />
+                </OutlinedField>
+              </div>
+              <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
                 <button
                   className="rounded border border-zinc-300 px-3 py-1 hover:bg-zinc-50"
                   disabled={testingId === project.id}
