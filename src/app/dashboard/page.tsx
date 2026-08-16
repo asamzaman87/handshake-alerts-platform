@@ -487,21 +487,17 @@ export default function DashboardPage() {
                   <OutlinedField label="Cooldown hours" hint={HINTS.cooldownHours}>
                     <input
                       type="number"
-                      min={project.alertCooldownHours ?? 3}
+                      min={1}
                       max={72}
                       className="w-full bg-transparent py-1.5 text-sm outline-none"
                       defaultValue={project.alertCooldownHours ?? 3}
                       key={`${project.id}-cd-${project.alertCooldownHours ?? 3}`}
+                      onChange={(e) => {
+                        e.target.value = String(clampInt(e.target.value, 1, 72));
+                      }}
                       onBlur={(e) => {
                         const current = project.alertCooldownHours ?? 3;
                         const value = clampInt(e.target.value, 1, 72);
-                        if (value < current) {
-                          e.target.value = String(current);
-                          setBlockedMessage(
-                            "You can't lower cooldown hours on a project that's already added. Delete the project and add it again if you want a shorter cooldown."
-                          );
-                          return;
-                        }
                         e.target.value = String(value);
                         if (value !== current) {
                           patch(project.id, { alertCooldownHours: value }).catch((err) =>
