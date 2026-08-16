@@ -14,7 +14,7 @@ const HINTS = {
   projectId:
     "The Handshake project UUID from the project page. The video above shows where to copy it.",
   maxAlerts:
-    "How many texts we will send for this project when tasks show up, before we pause. We send at most one text per check.",
+    "How many texts we will send for this project when tasks show up, before we pause. We send at most one text every 10 minutes.",
   cooldownHours:
     "After we hit max alerts, we stop texting this project for this many hours. Then the count resets and we start again.",
   remaining:
@@ -90,20 +90,59 @@ function FieldHint({ text }: { text: string }) {
 function OutlinedField({
   label,
   hint,
+  muted = false,
   children,
 }: {
   label: string;
   hint?: string;
+  muted?: boolean;
   children: ReactNode;
 }) {
   return (
-    <fieldset className="relative min-w-0 rounded-md border border-zinc-900 px-3 pb-1.5 pt-0.5">
-      <legend className="inline-flex items-center px-1 text-[13px] leading-none text-zinc-900">
+    <fieldset
+      className={`relative min-w-0 rounded-md border px-3 pb-1.5 pt-0.5 ${
+        muted ? "border-zinc-300 text-zinc-400" : "border-zinc-900 text-zinc-900"
+      }`}
+    >
+      <legend className="inline-flex items-center px-1 text-[13px] leading-none">
         {label}
         {hint ? <FieldHint text={hint} /> : null}
       </legend>
       {children}
     </fieldset>
+  );
+}
+
+function AlertsToggle({
+  on,
+  onToggle,
+}: {
+  on: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={on}
+      aria-label="Alerts"
+      onClick={onToggle}
+      className="inline-flex items-center gap-2 text-sm"
+    >
+      <span className="text-zinc-700">Alerts</span>
+      <span
+        className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${
+          on ? "bg-zinc-900" : "bg-zinc-300"
+        }`}
+      >
+        <span
+          className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
+            on ? "translate-x-5" : "translate-x-0"
+          }`}
+        />
+      </span>
+      <span className="w-8 text-left text-zinc-500">{on ? "On" : "Off"}</span>
+    </button>
   );
 }
 
@@ -363,19 +402,15 @@ export default function DashboardPage() {
                       : ""}
                   </p>
                 </div>
-                <label className="flex items-center gap-2 text-sm">
-                  Alerts
-                  <input
-                    type="checkbox"
-                    checked={project.alertsEnabled}
-                    onChange={(e) =>
-                      patch(project.id, { alertsEnabled: e.target.checked }).catch(
-                        (err) =>
-                          setError(err instanceof Error ? err.message : "Update failed")
-                      )
-                    }
-                  />
-                </label>
+                <AlertsToggle
+                  on={project.alertsEnabled}
+                  onToggle={() =>
+                    patch(project.id, { alertsEnabled: !project.alertsEnabled }).catch(
+                      (err) =>
+                        setError(err instanceof Error ? err.message : "Update failed")
+                    )
+                  }
+                />
               </div>
               {project.onCooldown && project.alertsCooldownUntil ? (
                 <p className="mt-3 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-900">
@@ -429,10 +464,10 @@ export default function DashboardPage() {
                     }}
                   />
                 </OutlinedField>
-                <OutlinedField label="Alerts left this round" hint={HINTS.remaining}>
+                <OutlinedField label="Alerts left this round" hint={HINTS.remaining} muted>
                   <input
                     readOnly
-                    className="w-full cursor-default bg-transparent py-1.5 text-sm text-zinc-700 outline-none"
+                    className="w-full cursor-default bg-transparent py-1.5 text-sm text-zinc-400 outline-none"
                     value={project.remainingAlerts}
                     tabIndex={-1}
                   />
