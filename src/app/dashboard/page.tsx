@@ -2,7 +2,6 @@
 
 import { FormEvent, ReactNode, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import {
   api,
   clearToken,
@@ -131,17 +130,23 @@ function AlertsToggle({
     >
       <span className="text-zinc-700">Alerts</span>
       <span
-        className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${
+        className={`relative inline-flex h-7 w-14 shrink-0 items-center rounded-full transition-colors ${
           on ? "bg-zinc-900" : "bg-zinc-300"
         }`}
       >
         <span
-          className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
-            on ? "translate-x-5" : "translate-x-0"
+          className={`pointer-events-none absolute text-[11px] font-medium ${
+            on ? "left-1.5 text-white" : "right-1.5 text-zinc-600"
+          }`}
+        >
+          {on ? "On" : "Off"}
+        </span>
+        <span
+          className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-all ${
+            on ? "left-[1.7rem]" : "left-0.5"
           }`}
         />
       </span>
-      <span className="w-8 text-left text-zinc-500">{on ? "On" : "Off"}</span>
     </button>
   );
 }
@@ -279,15 +284,10 @@ export default function DashboardPage() {
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-10">
-      <div className="flex items-center justify-between">
-        <div>
-          <Link href="/" className="text-sm text-zinc-500 hover:text-zinc-800">
-            Handshake Alerts
-          </Link>
-          <h1 className="mt-1 text-2xl font-semibold">Projects</h1>
-        </div>
+      <div className="relative">
+        <h1 className="px-24 text-center text-2xl font-semibold">Manage Projects</h1>
         <button
-          className="text-sm text-zinc-500 hover:text-zinc-800"
+          className="absolute right-0 top-1/2 -translate-y-1/2 rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-800 hover:bg-zinc-50"
           onClick={() => {
             clearToken();
             router.push("/");
