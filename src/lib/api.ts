@@ -1,7 +1,7 @@
 const TOKEN_KEY = "handshake-alerts-token";
 
 export function getApiBase() {
-  return "";
+  return (process.env.NEXT_PUBLIC_READEON_API_URL ?? "https://www.readeon.com").replace(/\/$/, "");
 }
 
 export function getToken() {
@@ -23,6 +23,7 @@ export async function api<T>(
 ): Promise<T> {
   const headers = new Headers(options.headers);
   headers.set("Content-Type", "application/json");
+  headers.set("x-from-extension", "handshake-alerts");
   const token = getToken();
   if (token) headers.set("Authorization", `Bearer ${token}`);
 

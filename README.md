@@ -9,6 +9,6 @@ npm install
 npm run dev
 ```
 
-Runs on [http://localhost:3001](http://localhost:3001). Browser calls same-origin `/api/handshake/*`, which proxies to production Readeon (`NEXT_PUBLIC_READEON_API_URL`). Cron still runs on Vercel — you do not run a cron job locally.
+Runs on [http://localhost:3001](http://localhost:3001). The page calls `https://www.readeon.com/api/handshake/*` (`NEXT_PUBLIC_READEON_API_URL`) with `x-from-extension` only on those Handshake requests. Cron runs on Vercel.
 
 We check about every 10 minutes. Default is one alert per project, then polling stops until you turn alerts back on.
