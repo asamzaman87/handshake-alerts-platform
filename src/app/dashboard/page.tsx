@@ -8,6 +8,7 @@ import {
   getToken,
   type Project,
 } from "@/lib/api";
+import { TEST_MODE, TEST_MODE_TASK_COUNT } from "@/lib/constants";
 
 const HINTS = {
   projectId:
@@ -15,9 +16,9 @@ const HINTS = {
   maxAlerts:
     "How many texts we will send for this project when tasks show up, before we pause. We send at most one text every 10 minutes.",
   cooldownHours:
-    "After we hit max alerts, we stop texting this project for this many hours. Then the count resets and we start again.",
+    "After we hit max alerts, we stop texting for this project for this many hours. Then the count resets and we start again.",
   remaining:
-    "How many texts we can still send before this project pauses. This drops as we text you, and it cannot go above Max alerts.",
+    "How many texts we can still send for this project before we pause. This drops as we text you, and it cannot go above Max alerts.",
 };
 
 function FieldHint({ text }: { text: string }) {
@@ -90,17 +91,23 @@ function OutlinedField({
   label,
   hint,
   muted = false,
+  invalid = false,
   children,
 }: {
   label: string;
   hint?: string;
   muted?: boolean;
+  invalid?: boolean;
   children: ReactNode;
 }) {
   return (
     <fieldset
       className={`relative min-w-0 rounded-md border px-3 pb-1.5 pt-0.5 ${
-        muted ? "border-zinc-300 text-zinc-400" : "border-zinc-900 text-zinc-900"
+        invalid
+          ? "border-red-600 text-red-600"
+          : muted
+            ? "border-zinc-300 text-zinc-400"
+            : "border-zinc-900 text-zinc-900"
       }`}
     >
       <legend className="inline-flex items-center px-1 text-[13px] leading-none">
@@ -151,17 +158,19 @@ function AlertsToggle({
   );
 }
 
-function DecreaseBlockedModal({
+function MessageModal({
+  title,
   message,
   onClose,
 }: {
+  title: string;
   message: string;
   onClose: () => void;
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
       <div className="w-full max-w-sm rounded-xl bg-white p-5 shadow-lg">
-        <p className="font-medium">Can't lower this setting</p>
+        <p className="font-medium">{title}</p>
         <p className="mt-2 text-sm leading-relaxed text-zinc-600">{message}</p>
         <button
           type="button"
@@ -170,6 +179,45 @@ function DecreaseBlockedModal({
         >
           OK
         </button>
+      </div>
+    </div>
+  );
+}
+
+function ConfirmModal({
+  title,
+  message,
+  confirmLabel,
+  onConfirm,
+  onCancel,
+}: {
+  title: string;
+  message: string;
+  confirmLabel: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+      <div className="w-full max-w-sm rounded-xl bg-white p-5 shadow-lg">
+        <p className="font-medium">{title}</p>
+        <p className="mt-2 text-sm leading-relaxed text-zinc-600">{message}</p>
+        <div className="mt-4 flex gap-2">
+          <button
+            type="button"
+            className="flex-1 rounded-lg border border-zinc-300 py-2 text-sm font-medium text-zinc-800 hover:bg-zinc-50"
+            onClick={onCancel}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="flex-1 rounded-lg bg-red-700 py-2 text-sm font-medium text-white hover:bg-red-800"
+            onClick={onConfirm}
+          >
+            {confirmLabel}
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -187,11 +235,275 @@ function tasksFoundLabel(count: number) {
   return `${count} tasks found`;
 }
 
-function formatCooldown(iso: string) {
-  return new Date(iso).toLocaleString(undefined, {
-    hour: "numeric",
-    minute: "2-digit",
-  });
+function cooldownRemainingLabel(iso: string, nowMs = Date.now()) {
+  const ms = Math.max(0, new Date(iso).getTime() - nowMs);
+  const totalSecs = Math.floor(ms / 1000);
+  const hours = Math.floor(totalSecs / 3600);
+  const mins = Math.floor((totalSecs % 3600) / 60);
+  const secs = totalSecs % 60;
+  return `${hours}:${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+}
+
+function RefreshIcon({ spinning }: { spinning?: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={`h-4 w-4 ${spinning ? "animate-spin" : ""}`}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      aria-hidden="true"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M4 4v6h6M20 20v-6h-6M5.3 9A7 7 0 0 1 19 8m-.3 7A7 7 0 0 1 5 16"
+      />
+    </svg>
+  );
+}
+function RefreshButton({
+  spinning,
+  label,
+  onClick,
+}: {
+  spinning: boolean;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      disabled={spinning}
+      className="shrink-0 rounded border border-zinc-900 p-1 text-zinc-900 hover:bg-zinc-100 disabled:opacity-50"
+      onClick={onClick}
+    >
+      <RefreshIcon spinning={spinning} />
+    </button>
+  );
+}
+function ProjectCard({
+  project,
+  refreshingTasks,
+  onPatch,
+  onRemove,
+  onRefreshTasks,
+  onRefreshStatus,
+  onBlocked,
+}: {
+  project: Project;
+  refreshingTasks: boolean;
+  onPatch: (id: string, body: Record<string, unknown>) => Promise<void>;
+  onRemove: (id: string) => Promise<void>;
+  onRefreshTasks: (id: string) => void;
+  onRefreshStatus: (id: string) => void;
+  onBlocked: (blocked: { title: string; message: string }) => void;
+}) {
+  const savedCooldown = project.alertCooldownHours ?? 3;
+  const [draftMax, setDraftMax] = useState(project.maxAlertCount);
+  const [draftCooldown, setDraftCooldown] = useState(savedCooldown);
+  const [saving, setSaving] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
+  const expiredRefresh = useRef(false);
+
+  useEffect(() => {
+    setDraftMax(project.maxAlertCount);
+    setDraftCooldown(project.alertCooldownHours ?? 3);
+  }, [
+    project.maxAlertCount,
+    project.alertCooldownHours,
+    project.onCooldown,
+    project.alertsCooldownUntil,
+  ]);
+
+  useEffect(() => {
+    if (!project.onCooldown || !project.alertsCooldownUntil) {
+      expiredRefresh.current = false;
+      return;
+    }
+    const id = window.setInterval(() => setNow(Date.now()), 1_000);
+    return () => window.clearInterval(id);
+  }, [project.onCooldown, project.alertsCooldownUntil]);
+
+  useEffect(() => {
+    if (!project.onCooldown || !project.alertsCooldownUntil) return;
+    if (new Date(project.alertsCooldownUntil).getTime() > now) return;
+    if (expiredRefresh.current) return;
+    expiredRefresh.current = true;
+    onRefreshStatus(project.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- parent passes a new callback each render
+  }, [now, project.id, project.onCooldown, project.alertsCooldownUntil]);
+
+  const dirty =
+    draftMax !== project.maxAlertCount || draftCooldown !== savedCooldown;
+
+  function cancelEdits() {
+    setDraftMax(project.maxAlertCount);
+    setDraftCooldown(savedCooldown);
+  }
+
+  function blockMaxDecrease() {
+    setDraftMax(project.maxAlertCount);
+    onBlocked({
+      title: "Can't lower this setting",
+      message:
+        "You can't lower max alerts on a project that's already added. Delete the project and add it again if you want a smaller number.",
+    });
+  }
+
+  async function saveEdits() {
+    const body: Record<string, unknown> = {};
+    if (draftMax !== project.maxAlertCount) body.maxAlertCount = draftMax;
+    if (draftCooldown !== savedCooldown) body.alertCooldownHours = draftCooldown;
+    if (Object.keys(body).length === 0) return;
+    const cooldownChangedDuringCooldown =
+      project.onCooldown && draftCooldown !== savedCooldown;
+    setSaving(true);
+    try {
+      await onPatch(project.id, body);
+      if (cooldownChangedDuringCooldown) {
+        onBlocked({
+          title: "Cooldown hours saved",
+          message:
+            "This new cooldown will take effect the next time this project cools down. The current cooldown is not affected.",
+        });
+      }
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <li className="rounded-xl border border-zinc-200 bg-white p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="font-medium">{project.displayName || "Untitled project"}</p>
+          <p className="mt-1 font-mono text-xs text-zinc-500">
+            {project.handshakeProjectId}
+          </p>
+          <div className="mt-1 flex items-center gap-1 text-xs text-zinc-500">
+            <p>
+              Last check:{" "}
+              {project.lastPolledAt
+                ? new Date(project.lastPolledAt).toLocaleString()
+                : "never"}
+              {project.lastAvailableCount != null
+                ? ` · ${tasksFoundLabel(project.lastAvailableCount)}`
+                : ""}
+            </p>
+            <RefreshButton
+              spinning={refreshingTasks}
+              label="Refresh tasks"
+              onClick={() => onRefreshTasks(project.id)}
+            />
+          </div>
+        </div>
+        <AlertsToggle
+          on={project.alertsEnabled}
+          onToggle={() =>
+            onPatch(project.id, { alertsEnabled: !project.alertsEnabled })
+          }
+        />
+      </div>
+      {project.onCooldown && project.alertsCooldownUntil ? (
+        <p className="mt-3 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-900">
+          Cooldown time remaining:{" "}
+          <span className="tabular-nums">
+            {cooldownRemainingLabel(project.alertsCooldownUntil, now)}
+          </span>
+          . We will start checking this project again then, with a fresh alert
+          count.
+        </p>
+      ) : null}
+      <div className="mt-3 grid gap-3 sm:grid-cols-3">
+        <OutlinedField label="Max alerts" hint={HINTS.maxAlerts}>
+          <input
+            type="number"
+            min={1}
+            max={12}
+            className="w-full bg-transparent py-1.5 text-sm outline-none"
+            value={draftMax}
+            onKeyDown={(e) => {
+              if (e.key === "ArrowDown" && draftMax <= project.maxAlertCount) {
+                e.preventDefault();
+                e.currentTarget.value = String(project.maxAlertCount);
+                blockMaxDecrease();
+              }
+            }}
+            onChange={(e) => {
+              const value = clampInt(e.target.value, 1, 12);
+              if (value < project.maxAlertCount) {
+                e.target.value = String(project.maxAlertCount);
+                blockMaxDecrease();
+                return;
+              }
+              setDraftMax(value);
+            }}
+          />
+        </OutlinedField>
+        <OutlinedField label="Cooldown hours" hint={HINTS.cooldownHours}>
+          <input
+            type="number"
+            min={1}
+            max={72}
+            className="w-full bg-transparent py-1.5 text-sm outline-none"
+            value={draftCooldown}
+            onChange={(e) => {
+              setDraftCooldown(clampInt(e.target.value, 1, 72));
+            }}
+          />
+        </OutlinedField>
+        <OutlinedField label="Alerts left this round" hint={HINTS.remaining} muted>
+          <input
+            readOnly
+            className="w-full cursor-default bg-transparent py-1.5 text-sm text-zinc-400 outline-none"
+            value={project.remainingAlerts}
+            tabIndex={-1}
+          />
+        </OutlinedField>
+      </div>
+      <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
+        <button
+          type="button"
+          className="rounded-lg bg-zinc-900 px-3 py-1.5 font-medium text-white disabled:opacity-40"
+          disabled={!dirty || saving}
+          onClick={() => saveEdits()}
+        >
+          {saving ? "Saving…" : "Save"}
+        </button>
+        <button
+          type="button"
+          className="rounded-lg border border-zinc-300 px-3 py-1.5 font-medium text-zinc-800 hover:bg-zinc-50 disabled:opacity-40"
+          disabled={!dirty || saving}
+          onClick={cancelEdits}
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          className="ml-auto rounded border border-red-700 px-3 py-1 text-red-700 hover:bg-red-50"
+          onClick={() => setConfirmDelete(true)}
+        >
+          Delete
+        </button>
+      </div>
+      {confirmDelete ? (
+        <ConfirmModal
+          title="Delete this project?"
+          message={`Are you sure you want to delete ${project.displayName || "this project"}? This cannot be undone.`}
+          confirmLabel="Delete"
+          onCancel={() => setConfirmDelete(false)}
+          onConfirm={() => {
+            setConfirmDelete(false);
+            onRemove(project.id);
+          }}
+        />
+      ) : null}
+    </li>
+  );
 }
 
 export default function DashboardPage() {
@@ -199,13 +511,15 @@ export default function DashboardPage() {
   const [ready, setReady] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
   const [projectId, setProjectId] = useState("");
-  const [maxAlertCount, setMaxAlertCount] = useState(1);
-  const [cooldownHours, setCooldownHours] = useState(3);
+  const [maxAlertCount, setMaxAlertCount] = useState<number | "">("");
+  const [cooldownHours, setCooldownHours] = useState<number | "">("");
+  const [showAddErrors, setShowAddErrors] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
-  const [testingId, setTestingId] = useState<string | null>(null);
-  const [blockedMessage, setBlockedMessage] = useState("");
+  const [refreshingTasksId, setRefreshingTasksId] = useState<string | null>(null);
+  const [refreshingStatusId, setRefreshingStatusId] = useState<string | null>(null);
+  const [blocked, setBlocked] = useState<{ title: string; message: string } | null>(null);
 
   async function load() {
     const data = await api<{ projects: Project[] }>("/api/handshake/projects");
@@ -247,6 +561,13 @@ export default function DashboardPage() {
     e.preventDefault();
     setError("");
     setNotice("");
+    const missingProjectId = !projectId.trim();
+    const missingMax = maxAlertCount === "";
+    const missingCooldown = cooldownHours === "";
+    if (missingProjectId || missingMax || missingCooldown) {
+      setShowAddErrors(true);
+      return;
+    }
     setBusy(true);
     try {
       await api("/api/handshake/projects", {
@@ -258,8 +579,9 @@ export default function DashboardPage() {
         }),
       });
       setProjectId("");
-      setMaxAlertCount(1);
-      setCooldownHours(3);
+      setMaxAlertCount("");
+      setCooldownHours("");
+      setShowAddErrors(false);
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to add project");
@@ -283,25 +605,112 @@ export default function DashboardPage() {
     setProjects((prev) => prev.filter((p) => p.id !== id));
   }
 
-  async function testNow(id: string) {
+  async function refreshTasks(id: string) {
     setError("");
     setNotice("");
-    setTestingId(id);
+    setRefreshingTasksId(id);
     try {
-      const data = await api<{ availableCount: number }>(
-        `/api/handshake/projects/${id}/test`,
-        { method: "POST" }
+      const data = await api<{
+        availableCount: number;
+        lastPolledAt?: string;
+        project?: Project;
+      }>(`/api/handshake/projects/${id}/test`, { method: "POST" });
+      setProjects((prev) =>
+        prev.map((project) => {
+          if (project.id !== id) return project;
+          const lastPolledAt =
+            data.project?.lastPolledAt ??
+            data.lastPolledAt ??
+            new Date().toISOString();
+          if (TEST_MODE) {
+            const serverMockedTasks =
+              (data.project?.lastAvailableCount ?? data.availableCount) > 2;
+            if (serverMockedTasks && data.project) {
+              return {
+                ...project,
+                lastAvailableCount: data.project.lastAvailableCount,
+                lastPolledAt: data.project.lastPolledAt,
+                remainingAlerts: data.project.remainingAlerts,
+                alertsSentCount: data.project.alertsSentCount,
+                onCooldown: data.project.onCooldown,
+                alertsCooldownUntil: data.project.alertsCooldownUntil,
+              };
+            }
+            if (!project.alertsEnabled || project.onCooldown || project.remainingAlerts <= 0) {
+              return {
+                ...project,
+                lastAvailableCount: TEST_MODE_TASK_COUNT,
+                lastPolledAt,
+              };
+            }
+            const nextRemaining = Math.max(0, project.remainingAlerts - 1);
+            const hitCap = nextRemaining === 0;
+            return {
+              ...project,
+              lastAvailableCount: TEST_MODE_TASK_COUNT,
+              lastPolledAt,
+              remainingAlerts: nextRemaining,
+              alertsSentCount: project.alertsSentCount + 1,
+              onCooldown: hitCap,
+              alertsCooldownUntil: hitCap
+                ? new Date(
+                    Date.now() + (project.alertCooldownHours ?? 3) * 60 * 60 * 1000
+                  ).toISOString()
+                : project.alertsCooldownUntil,
+            };
+          }
+          if (data.project) {
+            return {
+              ...project,
+              lastAvailableCount: data.project.lastAvailableCount,
+              lastPolledAt: data.project.lastPolledAt,
+              remainingAlerts: data.project.remainingAlerts,
+              alertsSentCount: data.project.alertsSentCount,
+              onCooldown: data.project.onCooldown,
+              alertsCooldownUntil: data.project.alertsCooldownUntil,
+            };
+          }
+          return {
+            ...project,
+            lastAvailableCount: data.availableCount,
+            lastPolledAt,
+          };
+        })
       );
-      setNotice(
-        data.availableCount > 2
-          ? `${tasksFoundLabel(data.availableCount)} (this does not send an SMS).`
-          : `No alert threshold hit. ${tasksFoundLabel(data.availableCount)}.`
-      );
-      await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Test failed");
+      setError(err instanceof Error ? err.message : "Refresh failed");
     } finally {
-      setTestingId(null);
+      setRefreshingTasksId(null);
+    }
+  }
+
+  async function refreshStatus(id: string) {
+    setError("");
+    setNotice("");
+    setRefreshingStatusId(id);
+    try {
+      const data = await api<{ projects: Project[] }>("/api/handshake/projects");
+      const updated = data.projects.find((project) => project.id === id);
+      if (!updated) return;
+      setProjects((prev) =>
+        prev.map((project) =>
+          project.id === id
+            ? {
+                ...project,
+                maxAlertCount: updated.maxAlertCount,
+                alertCooldownHours: updated.alertCooldownHours,
+                remainingAlerts: updated.remainingAlerts,
+                alertsSentCount: updated.alertsSentCount,
+                alertsCooldownUntil: updated.alertsCooldownUntil,
+                onCooldown: updated.onCooldown,
+              }
+            : project
+        )
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Refresh failed");
+    } finally {
+      setRefreshingStatusId(null);
     }
   }
 
@@ -316,7 +725,7 @@ export default function DashboardPage() {
   return (
     <main className="mx-auto max-w-3xl px-6 py-10">
       <div className="relative">
-        <h1 className="px-24 text-center text-2xl font-semibold">Manage Projects</h1>
+        <h1 className="px-24 text-center text-2xl font-semibold">Manage Handshake Project Alerts</h1>
         <button
           className="absolute right-0 top-1/2 -translate-y-1/2 rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-800 hover:bg-zinc-50"
           onClick={() => {
@@ -328,73 +737,92 @@ export default function DashboardPage() {
         </button>
       </div>
 
-      <p className="mt-3 text-sm leading-relaxed text-zinc-600">
-        We check each of your projects for claimable tasks about every 10 minutes.
-        If a project has more than 2 tasks waiting, we send you one text. We can
-        keep texting on later checks, up to the max alerts you set for that
-        project. After that, we pause that project for the cooldown you set
-        (3 hours by default), then the count resets and alerts start again on
-        their own.
-      </p>
-
       <form
         onSubmit={addProject}
         className="mt-6 rounded-xl border border-zinc-200 bg-white p-4"
       >
-        <h2 className="text-sm font-medium">Add project</h2>
-        <p className="mt-1 text-sm text-zinc-600">How to find your project ID</p>
+        <h2 className="text-center text-lg font-semibold">Add Project</h2>
+        <p className="mt-1 text-center text-sm text-zinc-600">
+          How to find your project ID
+        </p>
         <div className="mt-3 aspect-video overflow-hidden rounded-lg border border-zinc-200 bg-zinc-100">
           <iframe
             className="h-full w-full"
-            src="https://www.youtube-nocookie.com/embed/1g_bKwVpHvM"
+            src="https://www.youtube.com/embed/1g_bKwVpHvM"
             title="How to find your Handshake project ID"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            referrerPolicy="strict-origin-when-cross-origin"
             allowFullScreen
           />
         </div>
         <div className="mt-4 grid gap-4">
-          <OutlinedField label="Project ID" hint={HINTS.projectId}>
+          <OutlinedField
+            label="Project ID"
+            hint={HINTS.projectId}
+            invalid={showAddErrors && !projectId.trim()}
+          >
             <input
               className="w-full bg-transparent py-1.5 font-mono text-sm outline-none"
               value={projectId}
               onChange={(e) => setProjectId(e.target.value)}
-              required
             />
           </OutlinedField>
-          <div className="flex flex-wrap items-end gap-3">
+          <div className="flex flex-wrap items-start justify-center gap-3">
             <div className="w-40">
-              <OutlinedField label="Max alerts" hint={HINTS.maxAlerts}>
+              <OutlinedField
+                label="Max alerts"
+                hint={HINTS.maxAlerts}
+                invalid={showAddErrors && maxAlertCount === ""}
+              >
                 <input
                   type="number"
                   min={1}
                   max={12}
                   className="w-full bg-transparent py-1.5 text-sm outline-none"
                   value={maxAlertCount}
-                  onChange={(e) => setMaxAlertCount(clampInt(e.target.value, 1, 12))}
-                  required
+                  onChange={(e) =>
+                    setMaxAlertCount(
+                      e.target.value === "" ? "" : clampInt(e.target.value, 1, 12)
+                    )
+                  }
                 />
               </OutlinedField>
             </div>
             <div className="w-44">
-              <OutlinedField label="Cooldown hours" hint={HINTS.cooldownHours}>
+              <OutlinedField
+                label="Cooldown hours"
+                hint={HINTS.cooldownHours}
+                invalid={showAddErrors && cooldownHours === ""}
+              >
                 <input
                   type="number"
                   min={1}
                   max={72}
                   className="w-full bg-transparent py-1.5 text-sm outline-none"
                   value={cooldownHours}
-                  onChange={(e) => setCooldownHours(clampInt(e.target.value, 1, 72))}
-                  required
+                  onChange={(e) =>
+                    setCooldownHours(
+                      e.target.value === "" ? "" : clampInt(e.target.value, 1, 72)
+                    )
+                  }
                 />
               </OutlinedField>
             </div>
-            <button
-              disabled={busy}
-              className="rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50"
-            >
-              {busy ? "Checking…" : "Add"}
-            </button>
           </div>
+          <button
+            type="submit"
+            disabled={busy}
+            className={`mx-auto block w-fit rounded-full px-5 py-2 text-sm font-medium text-white ${
+              busy ||
+              !projectId.trim() ||
+              maxAlertCount === "" ||
+              cooldownHours === ""
+                ? "bg-zinc-900/40"
+                : "bg-zinc-900"
+            } disabled:opacity-50`}
+          >
+            {busy ? "Checking…" : "Add Project"}
+          </button>
         </div>
       </form>
 
@@ -409,141 +837,45 @@ export default function DashboardPage() {
           </p>
         </div>
       ) : (
-        <ul className="mt-6 space-y-3">
+        <div className="mt-6 space-y-3">
+          {TEST_MODE ? (
+            <p className="rounded-xl border border-red-600 bg-red-50 px-4 py-2 text-center text-sm font-semibold text-red-700">
+              Test Mode On
+            </p>
+          ) : null}
+          <ul className="space-y-3">
           {projects.map((project) => (
-            <li
+            <ProjectCard
               key={project.id}
-              className="rounded-xl border border-zinc-200 bg-white p-4"
-            >
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <p className="font-medium">
-                    {project.displayName || "Untitled project"}
-                  </p>
-                  <p className="mt-1 text-xs text-zinc-500">
-                    Last check:{" "}
-                    {project.lastPolledAt
-                      ? new Date(project.lastPolledAt).toLocaleString()
-                      : "never"}
-                    {project.lastAvailableCount != null
-                      ? ` · ${tasksFoundLabel(project.lastAvailableCount)}`
-                      : ""}
-                  </p>
-                </div>
-                <AlertsToggle
-                  on={project.alertsEnabled}
-                  onToggle={() =>
-                    patch(project.id, { alertsEnabled: !project.alertsEnabled }).catch(
-                      (err) =>
-                        setError(err instanceof Error ? err.message : "Update failed")
-                    )
-                  }
-                />
-              </div>
-              {project.onCooldown && project.alertsCooldownUntil ? (
-                <p className="mt-3 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-900">
-                  Cooling down until {formatCooldown(project.alertsCooldownUntil)}.
-                  We will start checking this project again then, with a fresh
-                  alert count.
-                </p>
-              ) : null}
-              <div className="mt-3 grid gap-3 sm:grid-cols-3">
-                <OutlinedField label="Max alerts" hint={HINTS.maxAlerts}>
-                  <input
-                    type="number"
-                    min={project.maxAlertCount}
-                    max={12}
-                    className="w-full bg-transparent py-1.5 text-sm outline-none"
-                    defaultValue={project.maxAlertCount}
-                    key={`${project.id}-max-${project.maxAlertCount}`}
-                    onBlur={(e) => {
-                      const value = clampInt(e.target.value, 1, 12);
-                      if (value < project.maxAlertCount) {
-                        e.target.value = String(project.maxAlertCount);
-                        setBlockedMessage(
-                          "You can't lower max alerts on a project that's already added. Delete the project and add it again if you want a smaller number."
-                        );
-                        return;
-                      }
-                      e.target.value = String(value);
-                      if (value !== project.maxAlertCount) {
-                        patch(project.id, { maxAlertCount: value }).catch((err) =>
-                          setError(err instanceof Error ? err.message : "Update failed")
-                        );
-                      }
-                    }}
-                  />
-                </OutlinedField>
-                {project.onCooldown ? (
-                  <OutlinedField label="Cooldown hours" hint={HINTS.cooldownHours} muted>
-                    <input
-                      readOnly
-                      className="w-full cursor-default bg-transparent py-1.5 text-sm text-zinc-400 outline-none"
-                      value={project.alertCooldownHours ?? 3}
-                      tabIndex={-1}
-                    />
-                  </OutlinedField>
-                ) : (
-                  <OutlinedField label="Cooldown hours" hint={HINTS.cooldownHours}>
-                    <input
-                      type="number"
-                      min={1}
-                      max={72}
-                      className="w-full bg-transparent py-1.5 text-sm outline-none"
-                      defaultValue={project.alertCooldownHours ?? 3}
-                      key={`${project.id}-cd-${project.alertCooldownHours ?? 3}`}
-                      onChange={(e) => {
-                        e.target.value = String(clampInt(e.target.value, 1, 72));
-                      }}
-                      onBlur={(e) => {
-                        const current = project.alertCooldownHours ?? 3;
-                        const value = clampInt(e.target.value, 1, 72);
-                        e.target.value = String(value);
-                        if (value !== current) {
-                          patch(project.id, { alertCooldownHours: value }).catch((err) =>
-                            setError(err instanceof Error ? err.message : "Update failed")
-                          );
-                        }
-                      }}
-                    />
-                  </OutlinedField>
-                )}
-                <OutlinedField label="Alerts left this round" hint={HINTS.remaining} muted>
-                  <input
-                    readOnly
-                    className="w-full cursor-default bg-transparent py-1.5 text-sm text-zinc-400 outline-none"
-                    value={project.remainingAlerts}
-                    tabIndex={-1}
-                  />
-                </OutlinedField>
-              </div>
-              <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
-                <button
-                  className="rounded border border-zinc-300 px-3 py-1 hover:bg-zinc-50"
-                  disabled={testingId === project.id}
-                  onClick={() => testNow(project.id)}
-                >
-                  {testingId === project.id ? "Testing…" : "Test now"}
-                </button>
-                <button
-                  className="rounded px-3 py-1 text-red-700 hover:bg-red-50"
-                  onClick={() =>
-                    remove(project.id).catch((err) =>
-                      setError(err instanceof Error ? err.message : "Delete failed")
-                    )
-                  }
-                >
-                  Delete
-                </button>
-              </div>
-            </li>
+              project={project}
+              refreshingTasks={refreshingTasksId === project.id}
+              onPatch={async (id, body) => {
+                try {
+                  await patch(id, body);
+                } catch (err) {
+                  setError(err instanceof Error ? err.message : "Update failed");
+                }
+              }}
+              onRemove={async (id) => {
+                try {
+                  await remove(id);
+                } catch (err) {
+                  setError(err instanceof Error ? err.message : "Delete failed");
+                }
+              }}
+              onRefreshTasks={refreshTasks}
+              onRefreshStatus={refreshStatus}
+              onBlocked={setBlocked}
+            />
           ))}
-        </ul>
+          </ul>
+        </div>
       )}
-      {blockedMessage ? (
-        <DecreaseBlockedModal
-          message={blockedMessage}
-          onClose={() => setBlockedMessage("")}
+      {blocked ? (
+        <MessageModal
+          title={blocked.title}
+          message={blocked.message}
+          onClose={() => setBlocked(null)}
         />
       ) : null}
     </main>

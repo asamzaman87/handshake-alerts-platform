@@ -37,8 +37,8 @@ export default function HomePage() {
         Sign in with your phone and add the Handshake projects you care about.
         About every 10 minutes we check each project for claimable tasks. If we
         find more than two waiting, we text you. You choose how many of those
-        texts to get; after that we pause that project for the cooldown you
-        set (3 hours by default), then start again.
+        texts to get; after that we pause texting for that project for the
+        cooldown you set, then start again.
       </p>
       <Link
         href="/sign-in"
@@ -46,6 +46,15 @@ export default function HomePage() {
       >
         Sign in
       </Link>
+      <p className="mt-6 text-sm text-zinc-500">
+        <Link href="/privacy" className="underline-offset-2 hover:underline">
+          Privacy Policy
+        </Link>
+        {" · "}
+        <Link href="/terms" className="underline-offset-2 hover:underline">
+          Terms
+        </Link>
+      </p>
     </main>
   );
 }

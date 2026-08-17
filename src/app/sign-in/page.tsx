@@ -57,7 +57,10 @@ export default function SignInPage() {
         <span aria-hidden="true">&larr;</span>
         Back
       </Link>
-      <h1 className="mt-4 text-2xl font-semibold">Sign in with your phone</h1>
+      <p className="mt-4 text-sm font-medium uppercase tracking-wide text-zinc-500">
+        Handshake Alerts
+      </p>
+      <h1 className="mt-3 text-2xl font-semibold">Sign in with your phone</h1>
       <p className="mt-2 text-sm text-zinc-600">
         We will text you a 6-digit sign-in code. After you sign in, Handshake
         Alerts can text you when Handshake AI projects you enable have claimable
@@ -85,7 +88,15 @@ export default function SignInPage() {
             project, account notifications when that Handshake project has
             claimable tasks. Message frequency varies (typically a few texts per
             week per project you enable). Message and data rates may apply.
-            Reply STOP to opt out, HELP for help.
+            Reply STOP to opt out, HELP for help. See our{" "}
+            <Link href="/privacy" className="underline underline-offset-2">
+              Privacy Policy
+            </Link>{" "}
+            and{" "}
+            <Link href="/terms" className="underline underline-offset-2">
+              Terms
+            </Link>
+            .
           </p>
           <button
             disabled={busy}
