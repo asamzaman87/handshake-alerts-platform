@@ -23,8 +23,8 @@ export default function ContactPage() {
           </a>
         </p>
         <p>
-          For SMS help, reply HELP to any message from us, or email the address
-          above. Reply STOP to opt out.
+          For SMS help, reply HELP to any message from us, or email us. Reply STOP
+          to opt out.
         </p>
       </div>
     </main>
