@@ -90,3 +90,20 @@ input {
 }
 .legal p { color: var(--muted); line-height: 1.55; }
 .form { max-width: 28rem; }
+.about {
+  margin-top: 2.25rem;
+  text-align: left;
+}
+.about h2 {
+  margin: 0;
+  font-size: 1rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.about p {
+  margin: 0.5rem 0 0;
+  font-size: 0.95rem;
+  line-height: 1.55;
+  color: var(--muted);
+}

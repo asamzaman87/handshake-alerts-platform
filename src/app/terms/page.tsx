@@ -10,11 +10,13 @@ export default function TermsPage() {
         Handshake Alerts
       </p>
       <h1 className="mt-3 text-3xl font-semibold tracking-tight">Terms</h1>
-      <p className="mt-4 text-sm text-zinc-500">Last updated: August 17, 2026</p>
+      <p className="mt-4 text-sm text-zinc-500">Last updated: August 18, 2026</p>
       <div className="mt-6 space-y-4 text-base leading-relaxed text-zinc-600">
         <p>
-          Handshake Alerts texts you about Handshake AI claimable tasks for
-          projects you add and enable. It is not affiliated with Handshake.
+          Handshake Alerts is operated by Asam Zaman (doing business as Handshake
+          Alerts), 1346 62nd Street, Brooklyn, NY 11219. Handshake Alerts texts
+          you about Handshake AI claimable tasks for projects you add and enable.
+          It is not affiliated with Handshake.
         </p>
         <p>
           By signing in with your phone, you consent to receive SMS from Handshake

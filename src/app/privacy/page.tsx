@@ -10,13 +10,15 @@ export default function PrivacyPage() {
         Handshake Alerts
       </p>
       <h1 className="mt-3 text-3xl font-semibold tracking-tight">Privacy Policy</h1>
-      <p className="mt-4 text-sm text-zinc-500">Last updated: August 17, 2026</p>
+      <p className="mt-4 text-sm text-zinc-500">Last updated: August 18, 2026</p>
       <div className="mt-6 space-y-4 text-base leading-relaxed text-zinc-600">
         <p>
           Handshake Alerts is operated by Asam Zaman (doing business as Handshake
-          Alerts). We collect your phone number when you sign in so we can send a
-          one-time verification code and, if you enable a project, SMS alerts when
-          Handshake AI claimable tasks are available.
+          Alerts), 1346 62nd Street, Brooklyn, NY 11219, United States. Contact:
+          az1926@nyu.edu or +1 (347) 459-0196. We collect your phone number when
+          you sign in so we can send a one-time verification code and, if you
+          enable a project, SMS alerts when Handshake AI claimable tasks are
+          available.
         </p>
         <p>
           We also store the Handshake project IDs you add, your alert on/off

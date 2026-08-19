@@ -34,10 +34,11 @@ export default function HomePage() {
         Get a text when Handshake tasks show up.
       </h1>
       <p className="mt-4 text-lg leading-relaxed text-zinc-600">
-        Sign in with your phone and add the Handshake projects you care about.
-        About every 10 minutes we check each project for claimable tasks. If we
-        find more than two waiting, we text you. You choose how many of those
-        texts to get; after that we pause texting for that project for the
+        Handshake Alerts is a small notification service operated by Asam Zaman.
+        Sign in with your phone and add the Handshake AI projects you care
+        about. About every 10 minutes we check each project for claimable tasks.
+        If we find more than two waiting, we text you. You choose how many of
+        those texts to get; after that we pause texting for that project for the
         cooldown you set, then start again.
       </p>
       <Link
@@ -46,6 +47,15 @@ export default function HomePage() {
       >
         Sign in
       </Link>
+      <p className="mt-8 max-w-md text-sm leading-relaxed text-zinc-500">
+        Asam Zaman (doing business as Handshake Alerts)
+        <br />
+        1346 62nd Street, Brooklyn, NY 11219
+        <br />
+        <a href="tel:+13474590196">+1 (347) 459-0196</a>
+        {" · "}
+        <a href="mailto:az1926@nyu.edu">az1926@nyu.edu</a>
+      </p>
       <p className="mt-6 text-sm text-zinc-500">
         <Link href="/privacy" className="underline-offset-2 hover:underline">
           Privacy Policy
