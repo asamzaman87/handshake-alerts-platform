@@ -14,9 +14,8 @@ export default function TermsPage() {
       <div className="mt-6 space-y-4 text-base leading-relaxed text-zinc-600">
         <p>
           Handshake Alerts is operated by Asam Zaman (doing business as Handshake
-          Alerts), 1346 62nd Street, Brooklyn, NY 11219. Handshake Alerts texts
-          you about Handshake AI claimable tasks for projects you add and enable.
-          It is not affiliated with Handshake.
+          Alerts). Handshake Alerts texts you about Handshake AI claimable tasks
+          for projects you add and enable. It is not affiliated with Handshake.
         </p>
         <p>
           By signing in with your phone, you consent to receive SMS from Handshake

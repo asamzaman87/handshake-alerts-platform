@@ -47,15 +47,6 @@ export default function HomePage() {
       >
         Sign in
       </Link>
-      <p className="mt-8 max-w-md text-sm leading-relaxed text-zinc-500">
-        Asam Zaman (doing business as Handshake Alerts)
-        <br />
-        1346 62nd Street, Brooklyn, NY 11219
-        <br />
-        <a href="tel:+13474590196">+1 (347) 459-0196</a>
-        {" · "}
-        <a href="mailto:az1926@nyu.edu">az1926@nyu.edu</a>
-      </p>
       <p className="mt-6 text-sm text-zinc-500">
         <Link href="/privacy" className="underline-offset-2 hover:underline">
           Privacy Policy
@@ -63,6 +54,10 @@ export default function HomePage() {
         {" · "}
         <Link href="/terms" className="underline-offset-2 hover:underline">
           Terms
+        </Link>
+        {" · "}
+        <Link href="/contact" className="underline-offset-2 hover:underline">
+          Contact
         </Link>
       </p>
     </main>
