@@ -1,9 +1,26 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { MarketingShell } from "@/components/MarketingShell";
+import { ProductPreview } from "@/components/ProductPreview";
 import { getToken } from "@/lib/api";
+
+const STEPS = [
+  {
+    title: "Sign in with your phone",
+    body: "We text a one-time code. No password to remember.",
+  },
+  {
+    title: "Add Handshake project IDs",
+    body: "Paste the UUIDs for the AI projects you want to watch.",
+  },
+  {
+    title: "Get texts when tasks show up",
+    body: "We check about every 10 minutes and text you when more than two tasks are waiting.",
+  },
+];
 
 export default function HomePage() {
   const router = useRouter();
@@ -11,7 +28,7 @@ export default function HomePage() {
 
   useEffect(() => {
     if (getToken()) {
-      router.replace("/dashboard");
+      router.replace("/dashboard/");
       return;
     }
     setShow(true);
@@ -19,47 +36,121 @@ export default function HomePage() {
 
   if (!show) {
     return (
-      <main className="flex min-h-screen items-center justify-center text-sm text-zinc-500">
+      <main className="flex min-h-screen items-center justify-center text-sm text-hs-muted">
         Loading…
       </main>
     );
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center px-6 py-16 text-center">
-      <p className="text-sm font-medium uppercase tracking-wide text-zinc-500">
-        Handshake Alerts
-      </p>
-      <h1 className="mt-3 text-4xl font-semibold tracking-tight">
-        Get a text when Handshake tasks show up.
-      </h1>
-      <p className="mt-4 text-lg leading-relaxed text-zinc-600">
-        Handshake Alerts is a small notification service operated by Asam Zaman.
-        Sign in with your phone and add the Handshake AI projects you care
-        about. About every 10 minutes we check each project for claimable tasks.
-        If we find more than two waiting, we text you. You choose how many of
-        those texts to get; after that we pause texting for that project for the
-        cooldown you set, then start again.
-      </p>
-      <Link
-        href="/sign-in"
-        className="mt-10 inline-flex min-w-56 items-center justify-center rounded-xl bg-zinc-900 px-10 py-3.5 text-base font-medium text-white hover:bg-zinc-800"
-      >
-        Sign in
-      </Link>
-      <p className="mt-6 text-sm text-zinc-500">
-        <Link href="/privacy" className="underline-offset-2 hover:underline">
-          Privacy Policy
+    <MarketingShell active="home">
+      <section className="relative overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(211,251,82,0.18),_transparent_45%),radial-gradient(circle_at_bottom_left,_rgba(122,243,255,0.12),_transparent_40%)]" />
+        <div className="relative mx-auto grid max-w-6xl gap-12 px-6 py-16 md:grid-cols-2 md:items-center md:py-24">
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-hs-muted">
+              Handshake Alerts
+            </p>
+            <h1 className="mt-4 text-4xl font-semibold leading-tight tracking-tight text-hs-ink md:text-5xl">
+              Get a text when Handshake tasks show up.
+            </h1>
+            <p className="mt-5 text-lg leading-relaxed text-hs-muted">
+              A notification service for Handshake AI fellows. Add the projects
+              you care about, turn alerts on, and we text you when claimable
+              tasks are waiting — on your schedule, with limits you control.
+            </p>
+            <div className="mt-8 flex flex-wrap gap-3">
+              <Link href="/sign-in/" className="btn-accent">
+                Sign in
+              </Link>
+              <Link
+                href="/how-it-works/"
+                className="inline-flex items-center justify-center rounded-full border border-hs-line bg-white px-6 py-3 text-sm font-semibold text-hs-ink transition hover:border-hs-ink"
+              >
+                How it works
+              </Link>
+            </div>
+            <p className="mt-6 text-sm text-hs-muted">
+              Operated by Asam Zaman · Not affiliated with Handshake
+            </p>
+          </div>
+          <ProductPreview />
+        </div>
+      </section>
+
+      <section className="border-y border-hs-line bg-white">
+        <div className="mx-auto max-w-6xl px-6 py-16">
+          <h2 className="section-heading text-center">How it works</h2>
+          <p className="section-lede mx-auto max-w-2xl text-center">
+            Three steps from sign-in to your first alert.
+          </p>
+          <ol className="mt-10 grid gap-6 md:grid-cols-3">
+            {STEPS.map((step, index) => (
+              <li
+                key={step.title}
+                className="rounded-2xl border border-hs-line bg-hs-bg p-6"
+              >
+                <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-hs-dark text-sm font-bold text-hs-accent">
+                  {index + 1}
+                </span>
+                <h3 className="mt-4 text-lg font-semibold text-hs-ink">{step.title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-hs-muted">{step.body}</p>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-6xl px-6 py-16">
+        <div className="grid gap-10 md:grid-cols-2 md:items-center">
+          <div>
+            <h2 className="section-heading">Built for Handshake AI workflows</h2>
+            <p className="section-lede">
+              You choose which projects to watch, how many texts to receive, and
+              how long to pause after the cap. Alerts are account notifications,
+              not marketing blasts.
+            </p>
+            <ul className="mt-6 space-y-3 text-sm text-hs-muted">
+              <li>Checks run about every 10 minutes per project</li>
+              <li>Texts send when more than two claimable tasks are waiting</li>
+              <li>Reply STOP to opt out · HELP for support</li>
+            </ul>
+            <Link href="/faq/" className="mt-6 inline-block text-sm font-semibold text-hs-ink underline-offset-4 hover:underline">
+              Read the FAQ
+            </Link>
+          </div>
+          <div className="rounded-2xl bg-hs-dark p-8 text-white">
+            <p className="text-sm font-semibold uppercase tracking-wide text-hs-accent">
+              What you&apos;ll see
+            </p>
+            <p className="mt-3 text-2xl font-semibold leading-snug">
+              A dashboard to manage alerts per project.
+            </p>
+            <p className="mt-3 text-sm leading-relaxed text-white/70">
+              Toggle alerts on or off, refresh task counts, set max alerts and
+              cooldown hours, and delete projects you no longer need.
+            </p>
+            <Link
+              href="/sign-in/"
+              className="mt-6 inline-flex rounded-full bg-hs-accent px-5 py-2.5 text-sm font-semibold text-hs-dark"
+            >
+              Open the app
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      <section className="bg-hs-dark px-6 py-16 text-center text-white">
+        <h2 className="text-3xl font-semibold tracking-tight md:text-4xl">
+          Ready to get notified?
+        </h2>
+        <p className="mx-auto mt-3 max-w-xl text-white/70">
+          Sign in with your phone, add a project ID, and turn alerts on.
+        </p>
+        <Link href="/sign-in/" className="btn-accent mt-8">
+          Sign in
         </Link>
-        {" · "}
-        <Link href="/terms" className="underline-offset-2 hover:underline">
-          Terms
-        </Link>
-        {" · "}
-        <Link href="/contact" className="underline-offset-2 hover:underline">
-          Contact
-        </Link>
-      </p>
-    </main>
+      </section>
+    </MarketingShell>
   );
 }

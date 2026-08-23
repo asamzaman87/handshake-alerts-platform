@@ -3,12 +3,34 @@
 @tailwind utilities;
 
 :root {
-  --background: #fafafa;
-  --foreground: #18181b;
+  --background: #fbf9f7;
+  --foreground: #14151c;
 }
 
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  font-family: var(--font-inter), system-ui, sans-serif;
+}
+
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center justify-center rounded-full bg-hs-dark px-6 py-3 text-sm font-semibold text-white transition hover:bg-hs-ink;
+  }
+
+  .btn-primary-sm {
+    @apply inline-flex items-center justify-center rounded-full bg-hs-dark px-4 py-2 text-sm font-semibold text-white transition hover:bg-hs-ink;
+  }
+
+  .btn-accent {
+    @apply inline-flex items-center justify-center rounded-full bg-hs-accent px-6 py-3 text-sm font-semibold text-hs-dark transition hover:brightness-95;
+  }
+
+  .section-heading {
+    @apply text-3xl font-semibold tracking-tight text-hs-ink md:text-4xl;
+  }
+
+  .section-lede {
+    @apply mt-3 text-lg leading-relaxed text-hs-muted;
+  }
 }

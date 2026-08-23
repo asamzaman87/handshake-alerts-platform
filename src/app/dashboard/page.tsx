@@ -104,10 +104,10 @@ function OutlinedField({
     <fieldset
       className={`relative min-w-0 rounded-md border px-3 pb-1.5 pt-0.5 ${
         invalid
-          ? "border-red-600 text-red-600"
+            ? "border-red-600 text-red-600"
           : muted
-            ? "border-zinc-300 text-zinc-400"
-            : "border-zinc-900 text-zinc-900"
+            ? "border-hs-line text-hs-muted"
+            : "border-hs-dark text-hs-ink"
       }`}
     >
       <legend className="inline-flex items-center px-1 text-[13px] leading-none">
@@ -138,7 +138,7 @@ function AlertsToggle({
       <span className="text-zinc-700">Alerts</span>
       <span
         className={`relative inline-flex h-7 w-14 shrink-0 items-center rounded-full transition-colors ${
-          on ? "bg-zinc-900" : "bg-zinc-300"
+          on ? "bg-hs-dark" : "bg-hs-line"
         }`}
       >
         <span
@@ -174,7 +174,7 @@ function MessageModal({
         <p className="mt-2 text-sm leading-relaxed text-zinc-600">{message}</p>
         <button
           type="button"
-          className="mt-4 w-full rounded-lg bg-zinc-900 py-2 text-sm font-medium text-white"
+          className="mt-4 w-full rounded-lg bg-hs-dark py-2 text-sm font-medium text-white"
           onClick={onClose}
         >
           OK
@@ -277,7 +277,7 @@ function RefreshButton({
       aria-label={label}
       title={label}
       disabled={spinning}
-      className="shrink-0 rounded border border-zinc-900 p-1 text-zinc-900 hover:bg-zinc-100 disabled:opacity-50"
+      className="shrink-0 rounded border border-hs-dark p-1 text-hs-ink hover:bg-hs-bg disabled:opacity-50"
       onClick={onClick}
     >
       <RefreshIcon spinning={spinning} />
@@ -518,7 +518,6 @@ export default function DashboardPage() {
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
   const [refreshingTasksId, setRefreshingTasksId] = useState<string | null>(null);
-  const [refreshingStatusId, setRefreshingStatusId] = useState<string | null>(null);
   const [blocked, setBlocked] = useState<{ title: string; message: string } | null>(null);
 
   async function load() {
@@ -687,7 +686,6 @@ export default function DashboardPage() {
   async function refreshStatus(id: string) {
     setError("");
     setNotice("");
-    setRefreshingStatusId(id);
     try {
       const data = await api<{ projects: Project[] }>("/api/handshake/projects");
       const updated = data.projects.find((project) => project.id === id);
@@ -709,8 +707,6 @@ export default function DashboardPage() {
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Refresh failed");
-    } finally {
-      setRefreshingStatusId(null);
     }
   }
 
@@ -817,8 +813,8 @@ export default function DashboardPage() {
               !projectId.trim() ||
               maxAlertCount === "" ||
               cooldownHours === ""
-                ? "bg-zinc-900/40"
-                : "bg-zinc-900"
+                ? "bg-hs-dark/40"
+                : "bg-hs-dark"
             } disabled:opacity-50`}
           >
             {busy ? "Checking…" : "Add Project"}
