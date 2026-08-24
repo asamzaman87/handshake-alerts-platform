@@ -27,8 +27,8 @@ const FAQ = [
     a: "Reply STOP to any message, turn alerts off for a project in your dashboard, delete the project, or sign out.",
   },
   {
-    q: "What does sign-in SMS vs alert SMS mean?",
-    a: "Sign-in uses a one-time code to verify your phone. Alert texts are separate account notifications after you enable a project.",
+    q: "What kinds of texts will I get?",
+    a: "Account notification texts when Handshake AI projects you enable have claimable tasks. These are not marketing messages.",
   },
 ];
 

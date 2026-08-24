@@ -23,8 +23,9 @@ export default function HowItWorksPage() {
               <p className="text-sm font-semibold text-hs-accent">Step 1</p>
               <h2 className="mt-2 text-xl font-semibold">Sign in with your phone</h2>
               <p className="mt-2 text-sm leading-relaxed text-hs-muted">
-                Enter your number on the sign-in page and agree to receive SMS.
-                We send a one-time verification code through Twilio Verify.
+                Enter your number on the sign-in page and agree to receive
+                account notification SMS about claimable tasks on projects you
+                enable.
               </p>
             </li>
             <li className="rounded-2xl border border-hs-line bg-white p-6">
@@ -52,12 +53,11 @@ export default function HowItWorksPage() {
         <div className="mt-12 rounded-2xl border border-hs-line bg-hs-bg p-6">
           <h2 className="text-lg font-semibold">Opt-in and consent</h2>
           <p className="mt-2 text-sm leading-relaxed text-hs-muted">
-            By entering your phone number and tapping Send code, you agree to
-            receive SMS from Handshake Alerts. Messages include a one-time
-            sign-in code and, after you enable a project, account notifications
-            when that project has claimable tasks. Message frequency varies.
-            Message and data rates may apply. Reply STOP to opt out, HELP for
-            help. See our{" "}
+            By entering your phone number and tapping Continue on the sign-in
+            page, you agree to receive account notification SMS from Handshake
+            Alerts when Handshake AI projects you enable have claimable tasks.
+            Message frequency varies. Message and data rates may apply. Reply
+            STOP to opt out, HELP for help. See our{" "}
             <Link href="/privacy/" className="underline underline-offset-2">
               Privacy Policy
             </Link>{" "}

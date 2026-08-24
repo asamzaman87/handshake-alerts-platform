@@ -10,13 +10,13 @@ export default function PrivacyPage() {
     <MarketingShell>
       <div className="mx-auto max-w-2xl px-6 py-16">
         <h1 className="section-heading">Privacy Policy</h1>
-        <p className="mt-4 text-sm text-hs-muted">Last updated: August 23, 2026</p>
+        <p className="mt-4 text-sm text-hs-muted">Last updated: August 24, 2026</p>
         <div className="mt-8 space-y-4 text-base leading-relaxed text-hs-muted">
           <p>
             Handshake Alerts is operated by Asam Zaman (doing business as
             Handshake Alerts). We collect your phone number when you sign in so
-            we can send a one-time verification code and, if you enable a
-            project, SMS alerts when Handshake AI claimable tasks are available.
+            we can send account notification SMS when Handshake AI projects you
+            enable have claimable tasks.
           </p>
           <p>
             We also store the Handshake project IDs you add, your alert on/off

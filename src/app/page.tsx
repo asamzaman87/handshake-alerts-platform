@@ -10,7 +10,7 @@ import { getToken } from "@/lib/api";
 const STEPS = [
   {
     title: "Sign in with your phone",
-    body: "We text a one-time code. No password to remember.",
+    body: "Enter your number and agree to account notification SMS.",
   },
   {
     title: "Add Handshake project IDs",

@@ -63,9 +63,9 @@ export default function SignInPage() {
           Sign in with your phone
         </h1>
         <p className="mt-3 text-sm leading-relaxed text-hs-muted">
-          We will text you a 6-digit sign-in code. After you sign in, Handshake
-          Alerts can text you when Handshake AI projects you enable have
-          claimable tasks.
+          Enter your phone number to access Handshake Alerts. After you enable a
+          project, we send account notification texts when that Handshake AI
+          project has claimable tasks.
         </p>
 
         <div className="mt-8 rounded-2xl border border-hs-line bg-white p-6 shadow-card">
@@ -84,10 +84,9 @@ export default function SignInPage() {
               </label>
               {error && <p className="text-sm text-red-600">{error}</p>}
               <p className="text-xs leading-relaxed text-hs-muted">
-                By entering your phone number and tapping Send code, you agree to
-                receive SMS from Handshake Alerts at the number you provide.
-                Messages include a one-time sign-in code and, after you enable a
-                project, account notifications when that Handshake project has
+                By entering your phone number and tapping Continue, you agree to
+                receive account notification SMS from Handshake Alerts at the
+                number you provide when Handshake AI projects you enable have
                 claimable tasks. Message frequency varies (typically a few texts
                 per week per project you enable). Message and data rates may
                 apply. Reply STOP to opt out, HELP for help. See our{" "}
@@ -101,7 +100,7 @@ export default function SignInPage() {
                 .
               </p>
               <button disabled={busy} className="btn-primary w-full disabled:opacity-50">
-                {busy ? "Sending…" : "Send code"}
+                {busy ? "Sending…" : "Continue"}
               </button>
             </form>
           ) : (
