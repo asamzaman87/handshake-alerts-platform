@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { MarketingShell } from "@/components/MarketingShell";
+import { CONTACT_EMAIL } from "@/lib/constants";
 
 export const metadata = {
   title: "Privacy Policy",
@@ -10,12 +11,11 @@ export default function PrivacyPage() {
     <MarketingShell>
       <div className="mx-auto max-w-2xl px-6 py-16">
         <h1 className="section-heading">Privacy Policy</h1>
-        <p className="mt-4 text-sm text-hs-muted">Last updated: August 24, 2026</p>
+        <p className="mt-4 text-sm text-hs-muted">Last updated: August 25, 2026</p>
         <div className="mt-8 space-y-4 text-base leading-relaxed text-hs-muted">
           <p>
-            Handshake Alerts is operated by Asam Zaman (doing business as
-            Handshake Alerts). We collect your phone number when you sign in so
-            we can send account notification SMS when Handshake AI projects you
+            Handshake Alerts collects your phone number when you sign in so we
+            can send account notification SMS when Handshake AI projects you
             enable have claimable tasks.
           </p>
           <p>
@@ -26,8 +26,8 @@ export default function PrivacyPage() {
           <p>
             You can stop SMS at any time by replying STOP or by turning alerts
             off or deleting a project in the app. For questions, email{" "}
-            <a href="mailto:az1926@nyu.edu" className="text-hs-ink underline">
-              az1926@nyu.edu
+            <a href={`mailto:${CONTACT_EMAIL}`} className="text-hs-ink underline">
+              {CONTACT_EMAIL}
             </a>
             .
           </p>

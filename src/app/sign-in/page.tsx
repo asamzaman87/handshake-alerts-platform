@@ -50,7 +50,7 @@ export default function SignInPage() {
   }
 
   return (
-    <MarketingShell showSignIn={false}>
+    <MarketingShell>
       <div className="mx-auto flex max-w-lg flex-col px-6 py-16">
         <Link
           href="/"

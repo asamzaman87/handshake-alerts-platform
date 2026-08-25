@@ -8,7 +8,7 @@ export const metadata = {
 const FAQ = [
   {
     q: "What is Handshake Alerts?",
-    a: "Handshake Alerts is a notification service operated by Asam Zaman. It texts you when Handshake AI projects you add have more than two claimable tasks waiting.",
+    a: "Handshake Alerts is a notification service that texts you when Handshake AI projects you add have more than two claimable tasks waiting.",
   },
   {
     q: "Is this affiliated with Handshake?",

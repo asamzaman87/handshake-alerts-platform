@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { MarketingShell } from "@/components/MarketingShell";
+import { CONTACT_EMAIL } from "@/lib/constants";
 
 export const metadata = {
   title: "Contact",
@@ -12,17 +13,16 @@ export default function ContactPage() {
         <h1 className="section-heading">Contact</h1>
         <div className="mt-8 space-y-4 text-base leading-relaxed text-hs-muted">
           <p>
-            Handshake Alerts is operated by Asam Zaman, doing business as
-            Handshake Alerts. We provide SMS notifications when Handshake AI
+            Handshake Alerts provides SMS notifications when Handshake AI
             projects you enable have claimable tasks.
           </p>
           <p>
             Email:{" "}
             <a
-              href="mailto:az1926@nyu.edu"
+              href={`mailto:${CONTACT_EMAIL}`}
               className="font-semibold text-hs-ink underline underline-offset-2"
             >
-              az1926@nyu.edu
+              {CONTACT_EMAIL}
             </a>
           </p>
           <p>

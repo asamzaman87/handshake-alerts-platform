@@ -8,8 +8,7 @@ export function SiteFooter() {
           <p className="text-lg font-semibold">Handshake Alerts</p>
           <p className="mt-3 max-w-md text-sm leading-relaxed text-white/70">
             SMS notifications when Handshake AI projects you follow have
-            claimable tasks. Operated by Asam Zaman. Not affiliated with
-            Handshake.
+            claimable tasks. Not affiliated with Handshake.
           </p>
         </div>
         <div>
@@ -17,6 +16,11 @@ export function SiteFooter() {
             Product
           </p>
           <ul className="mt-4 space-y-2 text-sm text-white/80">
+            <li>
+              <Link href="/dashboard/" className="hover:text-hs-accent">
+                Dashboard
+              </Link>
+            </li>
             <li>
               <Link href="/how-it-works/" className="hover:text-hs-accent">
                 How it works

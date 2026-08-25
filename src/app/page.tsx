@@ -71,7 +71,7 @@ export default function HomePage() {
               </Link>
             </div>
             <p className="mt-6 text-sm text-hs-muted">
-              Operated by Asam Zaman · Not affiliated with Handshake
+              Not affiliated with Handshake
             </p>
           </div>
           <ProductPreview />

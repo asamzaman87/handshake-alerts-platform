@@ -1,16 +1,30 @@
-import Link from "next/link";
+"use client";
 
-export function SiteHeader({
-  showSignIn = true,
-  active,
-}: {
-  showSignIn?: boolean;
-  active?: "home" | "how" | "faq" | "contact";
-}) {
-  const linkClass = (key: typeof active) =>
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { clearToken, getToken } from "@/lib/api";
+
+type NavKey = "home" | "how" | "faq" | "contact" | "dashboard";
+
+export function SiteHeader({ active }: { active?: NavKey }) {
+  const router = useRouter();
+  const [signedIn, setSignedIn] = useState(false);
+
+  useEffect(() => {
+    setSignedIn(!!getToken());
+  }, []);
+
+  const linkClass = (key: NavKey) =>
     key === active
       ? "font-semibold text-hs-ink"
       : "text-hs-muted transition hover:text-hs-ink";
+
+  function signOut() {
+    clearToken();
+    setSignedIn(false);
+    router.push("/");
+  }
 
   return (
     <header className="sticky top-0 z-40 border-b border-hs-line/80 bg-hs-bg/90 backdrop-blur-md">
@@ -27,6 +41,11 @@ export function SiteHeader({
           </span>
         </Link>
         <nav className="hidden items-center gap-7 text-sm md:flex">
+          {signedIn ? (
+            <Link href="/dashboard/" className={linkClass("dashboard")}>
+              Dashboard
+            </Link>
+          ) : null}
           <Link href="/how-it-works/" className={linkClass("how")}>
             How it works
           </Link>
@@ -37,12 +56,14 @@ export function SiteHeader({
             Contact
           </Link>
         </nav>
-        {showSignIn ? (
+        {signedIn ? (
+          <button type="button" onClick={signOut} className="btn-primary-sm shrink-0">
+            Sign out
+          </button>
+        ) : (
           <Link href="/sign-in/" className="btn-primary-sm shrink-0">
             Sign in
           </Link>
-        ) : (
-          <span className="w-[72px]" aria-hidden="true" />
         )}
       </div>
     </header>

@@ -54,7 +54,7 @@ function FieldHint({ text }: { text: string }) {
         type="button"
         aria-label="More information"
         aria-expanded={open}
-        className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-zinc-500 text-[10px] font-medium leading-none text-zinc-600 hover:bg-zinc-100"
+        className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-hs-muted text-[10px] font-medium leading-none text-hs-muted hover:bg-hs-bg"
         onMouseEnter={() => setOpen(true)}
         onMouseLeave={() => {
           if (!pinned) setOpen(false);
@@ -74,7 +74,7 @@ function FieldHint({ text }: { text: string }) {
       {open ? (
         <span
           role="tooltip"
-          className="absolute left-0 top-5 z-30 w-56 rounded-md border border-zinc-200 bg-white p-2 text-left text-xs font-normal leading-snug text-zinc-700 shadow-md"
+          className="absolute left-0 top-5 z-30 w-56 rounded-xl border border-hs-line bg-white p-3 text-left text-xs font-normal leading-snug text-hs-muted shadow-card"
           onMouseEnter={() => setOpen(true)}
           onMouseLeave={() => {
             if (!pinned) setOpen(false);
@@ -135,7 +135,7 @@ function AlertsToggle({
       onClick={onToggle}
       className="inline-flex items-center gap-2 text-sm"
     >
-      <span className="text-zinc-700">Alerts</span>
+      <span className="text-hs-muted">Alerts</span>
       <span
         className={`relative inline-flex h-7 w-14 shrink-0 items-center rounded-full transition-colors ${
           on ? "bg-hs-dark" : "bg-hs-line"
@@ -143,7 +143,7 @@ function AlertsToggle({
       >
         <span
           className={`pointer-events-none absolute text-[11px] font-medium ${
-            on ? "left-1.5 text-white" : "right-1.5 text-zinc-600"
+            on ? "left-1.5 text-white" : "right-1.5 text-hs-muted"
           }`}
         >
           {on ? "On" : "Off"}
@@ -168,13 +168,13 @@ function MessageModal({
   onClose: () => void;
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-      <div className="w-full max-w-sm rounded-xl bg-white p-5 shadow-lg">
-        <p className="font-medium">{title}</p>
-        <p className="mt-2 text-sm leading-relaxed text-zinc-600">{message}</p>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-hs-dark/40 px-4 backdrop-blur-sm">
+      <div className="w-full max-w-sm rounded-2xl border border-hs-line bg-white p-6 shadow-card">
+        <p className="text-lg font-semibold text-hs-ink">{title}</p>
+        <p className="mt-2 text-sm leading-relaxed text-hs-muted">{message}</p>
         <button
           type="button"
-          className="mt-4 w-full rounded-lg bg-hs-dark py-2 text-sm font-medium text-white"
+          className="btn-primary mt-5 w-full"
           onClick={onClose}
         >
           OK
@@ -198,21 +198,21 @@ function ConfirmModal({
   onCancel: () => void;
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-      <div className="w-full max-w-sm rounded-xl bg-white p-5 shadow-lg">
-        <p className="font-medium">{title}</p>
-        <p className="mt-2 text-sm leading-relaxed text-zinc-600">{message}</p>
-        <div className="mt-4 flex gap-2">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-hs-dark/40 px-4 backdrop-blur-sm">
+      <div className="w-full max-w-sm rounded-2xl border border-hs-line bg-white p-6 shadow-card">
+        <p className="text-lg font-semibold text-hs-ink">{title}</p>
+        <p className="mt-2 text-sm leading-relaxed text-hs-muted">{message}</p>
+        <div className="mt-5 flex gap-3">
           <button
             type="button"
-            className="flex-1 rounded-lg border border-zinc-300 py-2 text-sm font-medium text-zinc-800 hover:bg-zinc-50"
+            className="flex-1 rounded-full border border-hs-line px-4 py-2.5 text-sm font-semibold text-hs-ink transition hover:border-hs-ink"
             onClick={onCancel}
           >
             Cancel
           </button>
           <button
             type="button"
-            className="flex-1 rounded-lg bg-red-700 py-2 text-sm font-medium text-white hover:bg-red-800"
+            className="flex-1 rounded-full bg-red-700 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-red-800"
             onClick={onConfirm}
           >
             {confirmLabel}
@@ -377,118 +377,130 @@ function ProjectCard({
   }
 
   return (
-    <li className="rounded-xl border border-zinc-200 bg-white p-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="font-medium">{project.displayName || "Untitled project"}</p>
-          <p className="mt-1 font-mono text-xs text-zinc-500">
-            {project.handshakeProjectId}
-          </p>
-          <div className="mt-1 flex items-center gap-1 text-xs text-zinc-500">
-            <p>
-              Last check:{" "}
-              {project.lastPolledAt
-                ? new Date(project.lastPolledAt).toLocaleString()
-                : "never"}
-              {project.lastAvailableCount != null
-                ? ` · ${tasksFoundLabel(project.lastAvailableCount)}`
-                : ""}
+    <li className="overflow-hidden rounded-2xl border border-hs-line bg-white shadow-card">
+      <div className="border-b border-hs-line bg-hs-bg px-5 py-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="font-semibold text-hs-ink">
+              {project.displayName || "Untitled project"}
             </p>
-            <RefreshButton
-              spinning={refreshingTasks}
-              label="Refresh tasks"
-              onClick={() => onRefreshTasks(project.id)}
-            />
+            <p className="mt-1 truncate font-mono text-xs text-hs-muted">
+              {project.handshakeProjectId}
+            </p>
           </div>
+          <AlertsToggle
+            on={project.alertsEnabled}
+            onToggle={() =>
+              onPatch(project.id, { alertsEnabled: !project.alertsEnabled })
+            }
+          />
         </div>
-        <AlertsToggle
-          on={project.alertsEnabled}
-          onToggle={() =>
-            onPatch(project.id, { alertsEnabled: !project.alertsEnabled })
-          }
-        />
       </div>
-      {project.onCooldown && project.alertsCooldownUntil ? (
-        <p className="mt-3 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-900">
-          Cooldown time remaining:{" "}
-          <span className="tabular-nums">
-            {cooldownRemainingLabel(project.alertsCooldownUntil, now)}
+
+      <div className="space-y-4 p-5">
+        <div className="flex flex-wrap items-center gap-2 text-xs text-hs-muted">
+          <span className="rounded-full bg-hs-bg px-3 py-1">
+            Last check:{" "}
+            {project.lastPolledAt
+              ? new Date(project.lastPolledAt).toLocaleString()
+              : "never"}
           </span>
-          . We will start checking this project again then, with a fresh alert
-          count.
-        </p>
-      ) : null}
-      <div className="mt-3 grid gap-3 sm:grid-cols-3">
-        <OutlinedField label="Max alerts" hint={HINTS.maxAlerts}>
-          <input
-            type="number"
-            min={1}
-            max={12}
-            className="w-full bg-transparent py-1.5 text-sm outline-none"
-            value={draftMax}
-            onKeyDown={(e) => {
-              if (e.key === "ArrowDown" && draftMax <= project.maxAlertCount) {
-                e.preventDefault();
-                e.currentTarget.value = String(project.maxAlertCount);
-                blockMaxDecrease();
-              }
-            }}
-            onChange={(e) => {
-              const value = clampInt(e.target.value, 1, 12);
-              if (value < project.maxAlertCount) {
-                e.target.value = String(project.maxAlertCount);
-                blockMaxDecrease();
-                return;
-              }
-              setDraftMax(value);
-            }}
+          {project.lastAvailableCount != null ? (
+            <span className="rounded-full bg-hs-bg px-3 py-1">
+              {tasksFoundLabel(project.lastAvailableCount)}
+            </span>
+          ) : null}
+          <RefreshButton
+            spinning={refreshingTasks}
+            label="Refresh tasks"
+            onClick={() => onRefreshTasks(project.id)}
           />
-        </OutlinedField>
-        <OutlinedField label="Cooldown hours" hint={HINTS.cooldownHours}>
-          <input
-            type="number"
-            min={1}
-            max={72}
-            className="w-full bg-transparent py-1.5 text-sm outline-none"
-            value={draftCooldown}
-            onChange={(e) => {
-              setDraftCooldown(clampInt(e.target.value, 1, 72));
-            }}
-          />
-        </OutlinedField>
-        <OutlinedField label="Alerts left this round" hint={HINTS.remaining} muted>
-          <input
-            readOnly
-            className="w-full cursor-default bg-transparent py-1.5 text-sm text-zinc-400 outline-none"
-            value={project.remainingAlerts}
-            tabIndex={-1}
-          />
-        </OutlinedField>
-      </div>
-      <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
-        <button
-          type="button"
-          className="rounded-lg bg-zinc-900 px-3 py-1.5 font-medium text-white disabled:opacity-40"
-          disabled={!dirty || saving}
-          onClick={() => saveEdits()}
-        >
-          {saving ? "Saving…" : "Save"}
-        </button>
-        <button
-          type="button"
-          className="rounded-lg border border-zinc-300 px-3 py-1.5 font-medium text-zinc-800 hover:bg-zinc-50 disabled:opacity-40"
-          disabled={!dirty || saving}
-          onClick={cancelEdits}
-        >
-          Cancel
-        </button>
-        <button
-          type="button"
-          className="ml-auto rounded border border-red-700 px-3 py-1 text-red-700 hover:bg-red-50"
-          onClick={() => setConfirmDelete(true)}
-        >
-          Delete
-        </button>
+        </div>
+
+        {project.onCooldown && project.alertsCooldownUntil ? (
+          <p className="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            Cooldown time remaining:{" "}
+            <span className="tabular-nums font-semibold">
+              {cooldownRemainingLabel(project.alertsCooldownUntil, now)}
+            </span>
+            . We will start checking this project again then, with a fresh alert
+            count.
+          </p>
+        ) : null}
+
+        <div className="grid gap-3 sm:grid-cols-3">
+          <OutlinedField label="Max alerts" hint={HINTS.maxAlerts}>
+            <input
+              type="number"
+              min={1}
+              max={12}
+              className="w-full bg-transparent py-1.5 text-sm outline-none"
+              value={draftMax}
+              onKeyDown={(e) => {
+                if (e.key === "ArrowDown" && draftMax <= project.maxAlertCount) {
+                  e.preventDefault();
+                  e.currentTarget.value = String(project.maxAlertCount);
+                  blockMaxDecrease();
+                }
+              }}
+              onChange={(e) => {
+                const value = clampInt(e.target.value, 1, 12);
+                if (value < project.maxAlertCount) {
+                  e.target.value = String(project.maxAlertCount);
+                  blockMaxDecrease();
+                  return;
+                }
+                setDraftMax(value);
+              }}
+            />
+          </OutlinedField>
+          <OutlinedField label="Cooldown hours" hint={HINTS.cooldownHours}>
+            <input
+              type="number"
+              min={1}
+              max={72}
+              className="w-full bg-transparent py-1.5 text-sm outline-none"
+              value={draftCooldown}
+              onChange={(e) => {
+                setDraftCooldown(clampInt(e.target.value, 1, 72));
+              }}
+            />
+          </OutlinedField>
+          <OutlinedField label="Alerts left this round" hint={HINTS.remaining} muted>
+            <input
+              readOnly
+              className="w-full cursor-default bg-transparent py-1.5 text-sm text-hs-muted outline-none"
+              value={project.remainingAlerts}
+              tabIndex={-1}
+            />
+          </OutlinedField>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3 border-t border-hs-line pt-4">
+          <button
+            type="button"
+            className="btn-primary-sm disabled:opacity-40"
+            disabled={!dirty || saving}
+            onClick={() => saveEdits()}
+          >
+            {saving ? "Saving…" : "Save changes"}
+          </button>
+          <button
+            type="button"
+            className="rounded-full border border-hs-line px-4 py-2 text-sm font-semibold text-hs-ink transition hover:border-hs-ink disabled:opacity-40"
+            disabled={!dirty || saving}
+            onClick={cancelEdits}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="ml-auto rounded-full border border-red-200 px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-50"
+            onClick={() => setConfirmDelete(true)}
+          >
+            Delete
+          </button>
+        </div>
       </div>
       {confirmDelete ? (
         <ConfirmModal
@@ -712,36 +724,58 @@ export default function DashboardPage() {
 
   if (!ready) {
     return (
-      <main className="mx-auto max-w-3xl px-6 py-16 text-sm text-zinc-500">
-        Loading…
+      <main className="mx-auto max-w-5xl px-6 py-20 text-center text-sm text-hs-muted">
+        Loading your dashboard…
       </main>
     );
   }
 
-  return (
-    <main className="mx-auto max-w-3xl px-6 py-10">
-      <div className="relative">
-        <h1 className="px-24 text-center text-2xl font-semibold">Manage Handshake Project Alerts</h1>
-        <button
-          className="absolute right-0 top-1/2 -translate-y-1/2 rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-800 hover:bg-zinc-50"
-          onClick={() => {
-            clearToken();
-            router.push("/");
-          }}
-        >
-          Sign out
-        </button>
-      </div>
+  const alertsOn = projects.filter((p) => p.alertsEnabled).length;
 
+  return (
+    <main>
+      <section className="relative overflow-hidden border-b border-hs-line bg-white">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(211,251,82,0.12),_transparent_45%)]" />
+        <div className="relative mx-auto max-w-5xl px-6 py-12">
+          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-hs-muted">
+            Dashboard
+          </p>
+          <h1 className="mt-3 text-3xl font-semibold tracking-tight text-hs-ink md:text-4xl">
+            Manage Handshake project alerts
+          </h1>
+          <p className="mt-3 max-w-2xl text-base leading-relaxed text-hs-muted">
+            Add projects, turn alerts on or off, and control how often we text
+            you when claimable tasks show up.
+          </p>
+          {projects.length > 0 ? (
+            <div className="mt-6 flex flex-wrap gap-3">
+              <span className="rounded-full border border-hs-line bg-hs-bg px-4 py-2 text-sm font-medium text-hs-ink">
+                {projects.length} project{projects.length === 1 ? "" : "s"}
+              </span>
+              <span className="rounded-full border border-hs-line bg-hs-bg px-4 py-2 text-sm font-medium text-hs-ink">
+                {alertsOn} alert{alertsOn === 1 ? "" : "s"} on
+              </span>
+            </div>
+          ) : null}
+        </div>
+      </section>
+
+      <div className="mx-auto max-w-5xl px-6 py-10">
       <form
         onSubmit={addProject}
-        className="mt-6 rounded-xl border border-zinc-200 bg-white p-4"
+        className="overflow-hidden rounded-2xl border border-hs-line bg-white shadow-card"
       >
-        <h2 className="text-center text-lg font-semibold">Add Project</h2>
-        <p className="mt-1 text-center text-sm text-zinc-600">
+        <div className="border-b border-hs-line bg-hs-bg px-6 py-4">
+          <h2 className="text-lg font-semibold text-hs-ink">Add a project</h2>
+          <p className="mt-1 text-sm text-hs-muted">
+            Paste a Handshake project UUID and choose your alert settings.
+          </p>
+        </div>
+        <div className="p-6">
+        <p className="text-sm font-medium text-hs-ink">
           How to find your project ID
         </p>
-        <div className="mt-3 aspect-video overflow-hidden rounded-lg border border-zinc-200 bg-zinc-100">
+        <div className="mt-3 aspect-video overflow-hidden rounded-xl border border-hs-line bg-hs-bg">
           <iframe
             className="h-full w-full"
             src="https://www.youtube.com/embed/1g_bKwVpHvM"
@@ -751,7 +785,7 @@ export default function DashboardPage() {
             allowFullScreen
           />
         </div>
-        <div className="mt-4 grid gap-4">
+        <div className="mt-6 grid gap-4">
           <OutlinedField
             label="Project ID"
             hint={HINTS.projectId}
@@ -763,83 +797,89 @@ export default function DashboardPage() {
               onChange={(e) => setProjectId(e.target.value)}
             />
           </OutlinedField>
-          <div className="flex flex-wrap items-start justify-center gap-3">
-            <div className="w-40">
-              <OutlinedField
-                label="Max alerts"
-                hint={HINTS.maxAlerts}
-                invalid={showAddErrors && maxAlertCount === ""}
-              >
-                <input
-                  type="number"
-                  min={1}
-                  max={12}
-                  className="w-full bg-transparent py-1.5 text-sm outline-none"
-                  value={maxAlertCount}
-                  onChange={(e) =>
-                    setMaxAlertCount(
-                      e.target.value === "" ? "" : clampInt(e.target.value, 1, 12)
-                    )
-                  }
-                />
-              </OutlinedField>
-            </div>
-            <div className="w-44">
-              <OutlinedField
-                label="Cooldown hours"
-                hint={HINTS.cooldownHours}
-                invalid={showAddErrors && cooldownHours === ""}
-              >
-                <input
-                  type="number"
-                  min={1}
-                  max={72}
-                  className="w-full bg-transparent py-1.5 text-sm outline-none"
-                  value={cooldownHours}
-                  onChange={(e) =>
-                    setCooldownHours(
-                      e.target.value === "" ? "" : clampInt(e.target.value, 1, 72)
-                    )
-                  }
-                />
-              </OutlinedField>
-            </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <OutlinedField
+              label="Max alerts"
+              hint={HINTS.maxAlerts}
+              invalid={showAddErrors && maxAlertCount === ""}
+            >
+              <input
+                type="number"
+                min={1}
+                max={12}
+                className="w-full bg-transparent py-1.5 text-sm outline-none"
+                value={maxAlertCount}
+                onChange={(e) =>
+                  setMaxAlertCount(
+                    e.target.value === "" ? "" : clampInt(e.target.value, 1, 12)
+                  )
+                }
+              />
+            </OutlinedField>
+            <OutlinedField
+              label="Cooldown hours"
+              hint={HINTS.cooldownHours}
+              invalid={showAddErrors && cooldownHours === ""}
+            >
+              <input
+                type="number"
+                min={1}
+                max={72}
+                className="w-full bg-transparent py-1.5 text-sm outline-none"
+                value={cooldownHours}
+                onChange={(e) =>
+                  setCooldownHours(
+                    e.target.value === "" ? "" : clampInt(e.target.value, 1, 72)
+                  )
+                }
+              />
+            </OutlinedField>
           </div>
           <button
             type="submit"
             disabled={busy}
-            className={`mx-auto block w-fit rounded-full px-5 py-2 text-sm font-medium text-white ${
+            className={`btn-primary w-full sm:w-auto ${
               busy ||
               !projectId.trim() ||
               maxAlertCount === "" ||
               cooldownHours === ""
-                ? "bg-hs-dark/40"
-                : "bg-hs-dark"
-            } disabled:opacity-50`}
+                ? "opacity-50"
+                : ""
+            }`}
           >
-            {busy ? "Checking…" : "Add Project"}
+            {busy ? "Checking…" : "Add project"}
           </button>
+        </div>
         </div>
       </form>
 
-      {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
-      {notice && <p className="mt-4 text-sm text-emerald-700">{notice}</p>}
+      {error && (
+        <p className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {error}
+        </p>
+      )}
+      {notice && (
+        <p className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+          {notice}
+        </p>
+      )}
 
       {projects.length === 0 ? (
-        <div className="mt-10 rounded-xl border border-dashed border-zinc-300 px-6 py-12 text-center">
-          <p className="font-medium">No projects yet</p>
-          <p className="mt-1 text-sm text-zinc-600">
-            Add a Handshake project ID to start managing alerts.
+        <div className="mt-10 rounded-2xl border border-dashed border-hs-line bg-white px-6 py-14 text-center">
+          <p className="text-lg font-semibold text-hs-ink">No projects yet</p>
+          <p className="mt-2 text-sm text-hs-muted">
+            Add a Handshake project ID above to start receiving alerts.
           </p>
         </div>
       ) : (
-        <div className="mt-6 space-y-3">
+        <div className="mt-10 space-y-4">
+          <h2 className="text-xl font-semibold text-hs-ink">Your projects</h2>
           {TEST_MODE ? (
-            <p className="rounded-xl border border-red-600 bg-red-50 px-4 py-2 text-center text-sm font-semibold text-red-700">
-              Test Mode On
+            <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-center text-sm font-semibold text-red-700">
+              Test mode on
             </p>
           ) : null}
-          <ul className="space-y-3">
+          <ul className="space-y-4">
           {projects.map((project) => (
             <ProjectCard
               key={project.id}
@@ -874,6 +914,7 @@ export default function DashboardPage() {
           onClose={() => setBlocked(null)}
         />
       ) : null}
+      </div>
     </main>
   );
 }
