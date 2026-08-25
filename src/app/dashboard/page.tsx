@@ -2,6 +2,7 @@
 
 import { FormEvent, ReactNode, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { AlertNumberBanner } from "@/components/AlertNumberBanner";
 import {
   api,
   clearToken,
@@ -412,7 +413,7 @@ function ProjectCard({
           ) : null}
           <RefreshButton
             spinning={refreshingTasks}
-            label="Refresh tasks"
+            label="Refresh task check"
             onClick={() => onRefreshTasks(project.id)}
           />
         </div>
@@ -761,9 +762,11 @@ export default function DashboardPage() {
       </section>
 
       <div className="mx-auto max-w-5xl px-6 py-10">
+      <AlertNumberBanner />
+
       <form
         onSubmit={addProject}
-        className="overflow-hidden rounded-2xl border border-hs-line bg-white shadow-card"
+        className="mt-8 overflow-hidden rounded-2xl border border-hs-line bg-white shadow-card"
       >
         <div className="border-b border-hs-line bg-hs-bg px-6 py-4">
           <h2 className="text-lg font-semibold text-hs-ink">Add a project</h2>

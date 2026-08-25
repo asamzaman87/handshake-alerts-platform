@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AuthAppLink } from "@/components/AuthAppLink";
 import { MarketingShell } from "@/components/MarketingShell";
 import { ProductPreview } from "@/components/ProductPreview";
 
@@ -67,9 +68,10 @@ export default function HowItWorksPage() {
             </Link>
             .
           </p>
-          <Link href="/sign-in/" className="btn-primary mt-6">
-            Go to sign in
-          </Link>
+          <AuthAppLink
+            signedOutLabel="Go to sign in"
+            hideWhenSignedIn
+          />
         </div>
       </div>
     </MarketingShell>

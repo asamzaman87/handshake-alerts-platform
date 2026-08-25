@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { AuthAppLink } from "@/components/AuthAppLink";
 import { MarketingShell } from "@/components/MarketingShell";
 import { CONTACT_EMAIL } from "@/lib/constants";
 
@@ -30,9 +30,11 @@ export default function ContactPage() {
             STOP to opt out.
           </p>
         </div>
-        <Link href="/sign-in/" className="btn-primary mt-10">
-          Sign in to the app
-        </Link>
+        <AuthAppLink
+          signedOutLabel="Sign in to the app"
+          signedInLabel="Open dashboard"
+          className="btn-primary mt-10"
+        />
       </div>
     </MarketingShell>
   );

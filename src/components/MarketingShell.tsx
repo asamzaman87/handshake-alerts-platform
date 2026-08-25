@@ -1,4 +1,4 @@
-import { SiteFooter } from "./SiteFooter";
+import { ConditionalFooter } from "./ConditionalFooter";
 import { SiteHeader } from "./SiteHeader";
 
 export function MarketingShell({
@@ -12,7 +12,7 @@ export function MarketingShell({
     <div className="flex min-h-screen flex-col bg-hs-bg">
       <SiteHeader active={active} />
       <div className="flex-1">{children}</div>
-      <SiteFooter />
+      <ConditionalFooter />
     </div>
   );
 }
