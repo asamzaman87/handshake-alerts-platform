@@ -89,6 +89,8 @@ export default function CreditsClient() {
     );
   }
 
+  const outOfCredits = credits !== null && credits <= 0;
+
   return (
     <MarketingShell active="credits">
       <div className="mx-auto max-w-3xl px-6 py-16">
@@ -103,17 +105,40 @@ export default function CreditsClient() {
           accounts start with 5 free credits.
         </p>
 
-        <div className="mt-8 rounded-2xl border border-hs-line bg-white p-6 shadow-card">
-          <p className="text-sm font-semibold text-hs-muted">Your balance</p>
-          <p className="mt-2 text-4xl font-semibold tabular-nums text-hs-ink">
+        <div
+          className={`relative mt-8 overflow-hidden rounded-2xl border p-6 shadow-card ${
+            outOfCredits
+              ? "border-red-200 bg-red-50"
+              : "border-hs-line bg-white"
+          }`}
+        >
+          {outOfCredits ? (
+            <div className="absolute inset-x-0 top-0 h-1.5 bg-red-600" />
+          ) : null}
+          <p
+            className={`text-sm font-semibold uppercase tracking-[0.14em] ${
+              outOfCredits ? "text-red-700" : "text-hs-muted"
+            }`}
+          >
+            {outOfCredits ? "Out of credits" : "Your balance"}
+          </p>
+          <p
+            className={`mt-2 text-4xl font-semibold tabular-nums ${
+              outOfCredits ? "text-red-700" : "text-hs-ink"
+            }`}
+          >
             {credits ?? "—"}
           </p>
-          <p className="mt-1 text-sm text-hs-muted">
+          <p
+            className={`mt-1 text-sm ${
+              outOfCredits ? "text-red-700/80" : "text-hs-muted"
+            }`}
+          >
             credit{(credits ?? 0) === 1 ? "" : "s"} remaining
           </p>
-          {(credits ?? 0) <= 0 ? (
-            <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
-              You’re out of credits. Alerts won’t send until you buy more.
+          {outOfCredits ? (
+            <p className="mt-4 text-sm font-semibold leading-relaxed text-red-700">
+              You won’t get any more alerts until you buy more credits.
             </p>
           ) : null}
         </div>

@@ -25,7 +25,7 @@ const HINTS = {
   projectId:
     "The Handshake project UUID from the project page. The video above shows where to copy it.",
   checkInterval:
-    "How often we look for claimable tasks on this project. Times are approximate — usually within a few minutes of your choice.",
+    "How often we look for claimable tasks on this project. Times are approximate.",
 };
 
 function isProjectIdAddError(message: string) {
