@@ -1,6 +1,7 @@
 "use client";
 
-import { FormEvent, ReactNode, useEffect, useRef, useState } from "react";
+import { FormEvent, ReactNode, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { AlertNumberBanner } from "@/components/AlertNumberBanner";
 import {
@@ -22,18 +23,100 @@ const HINTS = {
     "How many texts we can still send for this project before we pause. This drops as we text you, and it cannot go above Max alerts.",
 };
 
+const TOOLTIP_WIDTH = 224; // w-56
+const TOOLTIP_GAP = 8;
+const VIEWPORT_PAD = 12;
+
 function FieldHint({ text }: { text: string }) {
   const [open, setOpen] = useState(false);
   const [pinned, setPinned] = useState(false);
+  const [coords, setCoords] = useState<{ top: number; left: number } | null>(
+    null
+  );
   const wrapRef = useRef<HTMLSpanElement>(null);
+  const tipRef = useRef<HTMLSpanElement>(null);
+  const closeTimer = useRef<number | null>(null);
+
+  function clearCloseTimer() {
+    if (closeTimer.current != null) {
+      window.clearTimeout(closeTimer.current);
+      closeTimer.current = null;
+    }
+  }
+
+  function show() {
+    clearCloseTimer();
+    setOpen(true);
+  }
+
+  function hideSoon() {
+    if (pinned) return;
+    clearCloseTimer();
+    closeTimer.current = window.setTimeout(() => {
+      setOpen(false);
+      closeTimer.current = null;
+    }, 120);
+  }
+
+  function placeTooltip() {
+    const button = wrapRef.current;
+    if (!button) return;
+    const rect = button.getBoundingClientRect();
+    const tipHeight = tipRef.current?.offsetHeight ?? 120;
+    const spaceBelow = window.innerHeight - rect.bottom - VIEWPORT_PAD;
+    const placeAbove =
+      spaceBelow < tipHeight + TOOLTIP_GAP && rect.top > tipHeight + TOOLTIP_GAP;
+
+    let left = rect.left;
+    left = Math.min(left, window.innerWidth - TOOLTIP_WIDTH - VIEWPORT_PAD);
+    left = Math.max(VIEWPORT_PAD, left);
+
+    const top = placeAbove
+      ? rect.top - tipHeight - TOOLTIP_GAP
+      : rect.bottom + TOOLTIP_GAP;
+
+    setCoords({ top, left });
+  }
+
+  useLayoutEffect(() => {
+    if (!open) {
+      setCoords(null);
+      return;
+    }
+    placeTooltip();
+    const id = window.requestAnimationFrame(() => placeTooltip());
+    return () => window.cancelAnimationFrame(id);
+  }, [open, text]);
+
+  useEffect(() => {
+    if (!open) return;
+    function onReposition() {
+      placeTooltip();
+    }
+    window.addEventListener("scroll", onReposition, true);
+    window.addEventListener("resize", onReposition);
+    return () => {
+      window.removeEventListener("scroll", onReposition, true);
+      window.removeEventListener("resize", onReposition);
+    };
+  }, [open]);
+
+  useEffect(() => {
+    return () => clearCloseTimer();
+  }, []);
 
   useEffect(() => {
     if (!pinned) return;
     function onPointerDown(event: MouseEvent) {
-      if (wrapRef.current && !wrapRef.current.contains(event.target as Node)) {
-        setPinned(false);
-        setOpen(false);
+      const target = event.target as Node;
+      if (
+        wrapRef.current?.contains(target) ||
+        tipRef.current?.contains(target)
+      ) {
+        return;
       }
+      setPinned(false);
+      setOpen(false);
     }
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
@@ -56,13 +139,12 @@ function FieldHint({ text }: { text: string }) {
         aria-label="More information"
         aria-expanded={open}
         className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-hs-muted text-[10px] font-medium leading-none text-hs-muted hover:bg-hs-bg"
-        onMouseEnter={() => setOpen(true)}
-        onMouseLeave={() => {
-          if (!pinned) setOpen(false);
-        }}
+        onMouseEnter={show}
+        onMouseLeave={hideSoon}
         onClick={(event) => {
           event.preventDefault();
           event.stopPropagation();
+          clearCloseTimer();
           setPinned((current) => {
             const next = !current;
             setOpen(next);
@@ -72,18 +154,25 @@ function FieldHint({ text }: { text: string }) {
       >
         ?
       </button>
-      {open ? (
-        <span
-          role="tooltip"
-          className="absolute left-0 top-5 z-30 w-56 rounded-xl border border-hs-line bg-white p-3 text-left text-xs font-normal leading-snug text-hs-muted shadow-card"
-          onMouseEnter={() => setOpen(true)}
-          onMouseLeave={() => {
-            if (!pinned) setOpen(false);
-          }}
-        >
-          {text}
-        </span>
-      ) : null}
+      {open && typeof document !== "undefined"
+        ? createPortal(
+            <span
+              ref={tipRef}
+              role="tooltip"
+              className="fixed z-[80] w-56 rounded-xl border border-hs-line bg-white p-3 text-left text-xs font-normal leading-snug text-hs-muted shadow-card"
+              style={{
+                top: coords?.top ?? -9999,
+                left: coords?.left ?? -9999,
+                visibility: coords ? "visible" : "hidden",
+              }}
+              onMouseEnter={show}
+              onMouseLeave={hideSoon}
+            >
+              {text}
+            </span>,
+            document.body
+          )
+        : null}
     </span>
   );
 }
@@ -325,12 +414,7 @@ function ProjectCard({
   useEffect(() => {
     setDraftMax(project.maxAlertCount);
     setDraftCooldown(project.alertCooldownHours ?? 3);
-  }, [
-    project.maxAlertCount,
-    project.alertCooldownHours,
-    project.onCooldown,
-    project.alertsCooldownUntil,
-  ]);
+  }, [project.maxAlertCount, project.alertCooldownHours]);
 
   useEffect(() => {
     if (!project.onCooldown || !project.alertsCooldownUntil) {
@@ -346,7 +430,7 @@ function ProjectCard({
     if (new Date(project.alertsCooldownUntil).getTime() > now) return;
     if (expiredRefresh.current) return;
     expiredRefresh.current = true;
-    onRefreshStatus(project.id);
+    void onRefreshStatus(project.id).catch(() => undefined);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- parent passes a new callback each render
   }, [now, project.id, project.onCooldown, project.alertsCooldownUntil]);
 
@@ -364,7 +448,19 @@ function ProjectCard({
     setSaving(true);
     try {
       // Sync latest server state before applying settings changes.
-      const fresh = await onRefreshStatus(project.id);
+      let fresh: Project | null;
+      try {
+        fresh = await onRefreshStatus(project.id);
+      } catch (err) {
+        onBlocked({
+          title: "Couldn’t refresh project",
+          message:
+            err instanceof Error
+              ? err.message
+              : "Check your connection and try saving again.",
+        });
+        return;
+      }
       if (!fresh) {
         onBlocked({
           title: "Project not found",
@@ -387,20 +483,28 @@ function ProjectCard({
 
       const result = await onPatch(project.id, body);
       const effects = result.effects ?? {};
+      const maxEffect = effects.maxAlertCount;
+      const coolEffect = effects.alertCooldownHours;
 
-      if (effects.maxAlertCount === "cooldown_started") {
+      if (maxEffect === "cooldown_started") {
         onBlocked({
           title: "Max alerts saved",
           message:
             "This round is used up under the new max, so a cooldown has started. After it ends, the next round will use your new max alerts.",
         });
-      } else if (effects.maxAlertCount === "deferred") {
+      } else if (maxEffect === "deferred" && coolEffect === "deferred") {
+        onBlocked({
+          title: "Settings saved",
+          message:
+            "Your new max alerts and cooldown hours will take effect after the current cooldown finishes. The cooldown timer is not reset.",
+        });
+      } else if (maxEffect === "deferred") {
         onBlocked({
           title: "Max alerts saved",
           message:
             "This new max will take effect after the current cooldown finishes. The cooldown timer is not reset.",
         });
-      } else if (effects.alertCooldownHours === "deferred") {
+      } else if (coolEffect === "deferred") {
         onBlocked({
           title: "Cooldown hours saved",
           message:
@@ -794,14 +898,9 @@ export default function DashboardPage() {
   async function refreshStatus(id: string) {
     setError("");
     setNotice("");
-    try {
-      const data = await api<{ projects: Project[] }>("/api/handshake/projects");
-      setProjects(data.projects);
-      return data.projects.find((project) => project.id === id) ?? null;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Refresh failed");
-      return null;
-    }
+    const data = await api<{ projects: Project[] }>("/api/handshake/projects");
+    setProjects(data.projects);
+    return data.projects.find((project) => project.id === id) ?? null;
   }
 
   if (!ready) {
