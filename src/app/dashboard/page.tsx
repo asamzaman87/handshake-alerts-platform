@@ -417,18 +417,22 @@ function ProjectCard({
       </div>
 
       <div className="space-y-4 p-5">
-        <div className="flex flex-wrap items-center gap-2 text-xs text-hs-muted">
-          <span className="rounded-full bg-hs-bg px-3 py-1">
-            Last check:{" "}
-            {project.lastPolledAt
-              ? new Date(project.lastPolledAt).toLocaleString()
-              : "never"}
-          </span>
-          {project.lastAvailableCount != null ? (
-            <span className="rounded-full bg-hs-bg px-3 py-1">
-              {tasksFoundLabel(project.lastAvailableCount)}
-            </span>
-          ) : null}
+        <div className="flex flex-wrap items-start gap-3 text-xs text-hs-muted">
+          <div className="rounded-xl bg-hs-bg px-3 py-2">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-hs-muted">
+              Last check
+            </p>
+            <p className="mt-1 font-medium text-hs-ink">
+              {project.lastPolledAt
+                ? new Date(project.lastPolledAt).toLocaleString()
+                : "never"}
+            </p>
+            <p className="mt-0.5 text-hs-muted">
+              {project.lastAvailableCount != null
+                ? tasksFoundLabel(project.lastAvailableCount)
+                : "No task count yet"}
+            </p>
+          </div>
         </div>
 
         {(project.onCooldown && project.alertsCooldownUntil) ||
