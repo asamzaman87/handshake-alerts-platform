@@ -757,6 +757,7 @@ export default function DashboardPage() {
   const addErrorRef = useRef<HTMLParagraphElement>(null);
   const [busy, setBusy] = useState(false);
   const [refreshingTasksId, setRefreshingTasksId] = useState<string | null>(null);
+  const [retryingLoad, setRetryingLoad] = useState(false);
   const [blocked, setBlocked] = useState<{ title: string; message: string } | null>(null);
 
   async function load() {
@@ -764,21 +765,59 @@ export default function DashboardPage() {
     setProjects(data.projects);
   }
 
+  async function loadWithRetries(retries = 2) {
+    let lastError: unknown;
+    for (let attempt = 0; attempt <= retries; attempt += 1) {
+      try {
+        await load();
+        setError("");
+        return;
+      } catch (err) {
+        lastError = err;
+        if (String((err as Error)?.message ?? "").includes("Unauthorized")) {
+          throw err;
+        }
+        if (attempt < retries) {
+          await new Promise((resolve) =>
+            window.setTimeout(resolve, 400 * (attempt + 1))
+          );
+        }
+      }
+    }
+    throw lastError;
+  }
+
+  function handleLoadFailure(err: unknown) {
+    if (String((err as Error)?.message ?? "").includes("Unauthorized")) {
+      clearToken();
+      router.replace("/sign-in");
+      return;
+    }
+    setError(err instanceof Error ? err.message : "Failed to load");
+  }
+
+  async function retryDashboardLoad() {
+    setRetryingLoad(true);
+    setError("");
+    setNotice("");
+    try {
+      await loadWithRetries();
+    } catch (err) {
+      handleLoadFailure(err);
+    } finally {
+      setRetryingLoad(false);
+    }
+  }
+
   useEffect(() => {
     if (!getToken()) {
       router.replace("/sign-in");
       return;
     }
-    load()
-      .catch((err) => {
-        if (String(err.message).includes("Unauthorized")) {
-          clearToken();
-          router.replace("/sign-in");
-          return;
-        }
-        setError(err instanceof Error ? err.message : "Failed to load");
-      })
+    loadWithRetries()
+      .catch(handleLoadFailure)
       .finally(() => setReady(true));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only dashboard bootstrap
   }, [router]);
 
   useEffect(() => {
@@ -1064,11 +1103,21 @@ export default function DashboardPage() {
         </div>
       </form>
 
-      {error && (
-        <p className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {error}
-        </p>
-      )}
+      {error ? (
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <p>{error}</p>
+          <button
+            type="button"
+            disabled={retryingLoad}
+            className="shrink-0 rounded-full border border-red-300 bg-white px-4 py-1.5 text-sm font-semibold text-red-800 transition hover:bg-red-100 disabled:opacity-50"
+            onClick={() => {
+              void retryDashboardLoad();
+            }}
+          >
+            {retryingLoad ? "Trying…" : "Try again"}
+          </button>
+        </div>
+      ) : null}
       {notice && (
         <p className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
           {notice}
