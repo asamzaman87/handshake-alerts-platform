@@ -405,6 +405,7 @@ function RefreshButton({
 function ProjectCard({
   project,
   refreshingTasks,
+  creditsLocked,
   onPatch,
   onRemove,
   onRefreshTasks,
@@ -415,6 +416,7 @@ function ProjectCard({
 }: {
   project: Project;
   refreshingTasks: boolean;
+  creditsLocked: boolean;
   onPatch: (
     id: string,
     body: Record<string, unknown>
@@ -428,7 +430,12 @@ function ProjectCard({
   onRemove: (id: string) => Promise<void>;
   onRefreshTasks: (id: string) => void;
   onRefreshStatus: (id: string) => Promise<Project | null>;
-  onBlocked: (blocked: { title: string; message: string }) => void;
+  onBlocked: (blocked: {
+    title: string;
+    message: string;
+    actionHref?: string;
+    actionLabel?: string;
+  }) => void;
   onResetCooldown: (id: string) => Promise<void>;
   onToast: (message: string) => void;
 }) {
@@ -552,9 +559,32 @@ function ProjectCard({
   }
 
   const alertsLocked = !project.alertsEnabled;
+  const interactionLocked = creditsLocked || alertsLocked;
+
+  function showCreditsLockedModal() {
+    onBlocked({
+      title: "Out of credits",
+      message:
+        "You can’t change this project while you have no alert credits. You also won’t get SMS alerts until you buy more.",
+      actionHref: "/credits/",
+      actionLabel: "Buy credits",
+    });
+  }
 
   return (
-    <li className="overflow-hidden rounded-2xl border border-hs-line bg-white shadow-card">
+    <li
+      className={`relative overflow-hidden rounded-2xl border border-hs-line bg-white shadow-card ${
+        creditsLocked ? "opacity-50" : ""
+      }`}
+    >
+      {creditsLocked ? (
+        <button
+          type="button"
+          className="absolute inset-0 z-20 cursor-pointer rounded-2xl"
+          aria-label="Out of credits"
+          onClick={showCreditsLockedModal}
+        />
+      ) : null}
       <div className="border-b border-hs-line bg-hs-bg px-5 py-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
@@ -607,7 +637,7 @@ function ProjectCard({
           <div className="relative">
             <div
               className={`flex flex-wrap items-center justify-between gap-3 rounded-xl bg-amber-50 px-4 py-3 ${
-                alertsLocked ? "opacity-40" : ""
+                interactionLocked ? "opacity-40" : ""
               }`}
             >
               <p className="text-sm text-amber-900">
@@ -620,10 +650,10 @@ function ProjectCard({
               </p>
               <button
                 type="button"
-                disabled={resettingCooldown || alertsLocked}
+                disabled={resettingCooldown || interactionLocked}
                 className="shrink-0 rounded-full border border-amber-700 px-4 py-2 text-sm font-semibold text-amber-900 transition hover:bg-amber-100/80 disabled:opacity-40"
                 onClick={async () => {
-                  if (alertsLocked) return;
+                  if (interactionLocked) return;
                   setResettingCooldown(true);
                   try {
                     await onResetCooldown(project.id);
@@ -635,7 +665,7 @@ function ProjectCard({
                 {resettingCooldown ? "Resetting…" : "Reset cooldown"}
               </button>
             </div>
-            {alertsLocked ? (
+            {!creditsLocked && alertsLocked ? (
               <button
                 type="button"
                 className="absolute inset-0 z-10 cursor-pointer rounded-xl"
@@ -655,19 +685,23 @@ function ProjectCard({
         <div className="relative">
           <div
             className={`grid gap-3 sm:grid-cols-3 ${
-              alertsLocked ? "opacity-40" : ""
+              interactionLocked ? "opacity-40" : ""
             }`}
           >
-            <OutlinedField label="Max alerts" hint={HINTS.maxAlerts} muted={alertsLocked}>
+            <OutlinedField
+              label="Max alerts"
+              hint={HINTS.maxAlerts}
+              muted={interactionLocked}
+            >
               <input
                 type="number"
                 min={1}
                 max={12}
-                disabled={alertsLocked}
+                disabled={interactionLocked}
                 className="w-full bg-transparent py-1.5 text-sm outline-none disabled:cursor-not-allowed"
                 value={draftMax}
                 onChange={(e) => {
-                  if (alertsLocked) return;
+                  if (interactionLocked) return;
                   setDraftMax(clampInt(e.target.value, 1, 12));
                 }}
               />
@@ -675,17 +709,17 @@ function ProjectCard({
             <OutlinedField
               label="Cooldown hours"
               hint={HINTS.cooldownHours}
-              muted={alertsLocked}
+              muted={interactionLocked}
             >
               <input
                 type="number"
                 min={1}
                 max={72}
-                disabled={alertsLocked}
+                disabled={interactionLocked}
                 className="w-full bg-transparent py-1.5 text-sm outline-none disabled:cursor-not-allowed"
                 value={draftCooldown}
                 onChange={(e) => {
-                  if (alertsLocked) return;
+                  if (interactionLocked) return;
                   setDraftCooldown(clampInt(e.target.value, 1, 72));
                 }}
               />
@@ -699,7 +733,7 @@ function ProjectCard({
               />
             </OutlinedField>
           </div>
-          {alertsLocked ? (
+          {!creditsLocked && alertsLocked ? (
             <button
               type="button"
               className="absolute inset-0 z-10 cursor-pointer rounded-xl"
@@ -719,7 +753,7 @@ function ProjectCard({
           <button
             type="button"
             className="btn-primary-sm disabled:opacity-40"
-            disabled={alertsLocked || !dirty || saving}
+            disabled={interactionLocked || !dirty || saving}
             onClick={() => saveEdits()}
           >
             {saving ? "Saving…" : "Save changes"}
@@ -727,7 +761,7 @@ function ProjectCard({
           <button
             type="button"
             className="rounded-full border border-hs-line px-4 py-2 text-sm font-semibold text-hs-ink transition hover:border-hs-ink disabled:opacity-40"
-            disabled={alertsLocked || !dirty || saving}
+            disabled={interactionLocked || !dirty || saving}
             onClick={cancelEdits}
           >
             Cancel
@@ -735,12 +769,12 @@ function ProjectCard({
           <button
             type="button"
             className="ml-auto rounded-full border border-red-200 px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-50 disabled:opacity-40"
-            disabled={alertsLocked}
+            disabled={interactionLocked}
             onClick={() => setConfirmDelete(true)}
           >
             Delete
           </button>
-          {alertsLocked ? (
+          {!creditsLocked && alertsLocked ? (
             <button
               type="button"
               className="absolute inset-0 z-10 cursor-pointer"
@@ -976,26 +1010,18 @@ export default function DashboardPage() {
 
   async function patch(id: string, body: Record<string, unknown>) {
     setError("");
-    try {
-      const data = await api<{
-        project: Project;
-        effects?: {
-          maxAlertCount?: "updated" | "deferred" | "cooldown_started";
-          alertCooldownHours?: "updated" | "deferred";
-        };
-      }>(`/api/handshake/projects/${id}`, {
-        method: "PATCH",
-        body: JSON.stringify(body),
-      });
-      setProjects((prev) => prev.map((p) => (p.id === id ? data.project : p)));
-      return data;
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Update failed";
-      if (body.alertsEnabled === true && isOutOfCreditsError(message)) {
-        showOutOfCreditsModal(message);
-      }
-      throw err;
-    }
+    const data = await api<{
+      project: Project;
+      effects?: {
+        maxAlertCount?: "updated" | "deferred" | "cooldown_started";
+        alertCooldownHours?: "updated" | "deferred";
+      };
+    }>(`/api/handshake/projects/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    });
+    setProjects((prev) => prev.map((p) => (p.id === id ? data.project : p)));
+    return data;
   }
 
   async function remove(id: string) {
@@ -1260,20 +1286,16 @@ export default function DashboardPage() {
                   key={project.id}
                   project={project}
                   refreshingTasks={refreshingTasksId === project.id}
+                  creditsLocked={
+                    alertCredits !== null && alertCredits <= 0
+                  }
                   onPatch={async (id, body) => {
                     try {
                       return await patch(id, body);
                     } catch (err) {
-                      const message =
-                        err instanceof Error ? err.message : "Update failed";
-                      if (
-                        !(
-                          body.alertsEnabled === true &&
-                          isOutOfCreditsError(message)
-                        )
-                      ) {
-                        setError(message);
-                      }
+                      setError(
+                        err instanceof Error ? err.message : "Update failed"
+                      );
                       throw err;
                     }
                   }}

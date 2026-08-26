@@ -7,7 +7,7 @@ export function CreditsBanner({ credits }: { credits: number | null }) {
   return (
     <div
       className={`rounded-2xl border p-5 shadow-card ${
-        out ? "border-amber-200 bg-amber-50" : "border-hs-line bg-white"
+        out ? "border-red-200 bg-red-50" : "border-hs-line bg-white"
       }`}
     >
       <p className="text-sm font-semibold text-hs-ink">Your alert credits</p>
@@ -20,7 +20,7 @@ export function CreditsBanner({ credits }: { credits: number | null }) {
         <p
           className={`inline-flex items-center rounded-full border px-4 py-2 text-base font-semibold tracking-tight tabular-nums ${
             out
-              ? "border-amber-300 bg-white text-amber-950"
+              ? "border-red-300 bg-white text-red-700"
               : "border-hs-line bg-hs-bg text-hs-ink"
           }`}
         >
@@ -36,8 +36,8 @@ export function CreditsBanner({ credits }: { credits: number | null }) {
         </Link>
       </div>
       {out ? (
-        <p className="mt-3 text-sm font-medium text-amber-950">
-          You’re out of credits — alerts won’t send until you top up.
+        <p className="mt-3 text-sm font-semibold text-red-700">
+          You won’t get any more alerts until you buy more credits.
         </p>
       ) : null}
     </div>
