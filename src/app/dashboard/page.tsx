@@ -449,87 +449,120 @@ function ProjectCard({
               count.
             </p>
             {TEST_MODE && onResetCooldown ? (
-              <button
-                type="button"
-                disabled={resettingCooldown || alertsLocked}
-                className="rounded-full border border-amber-700 px-4 py-2 text-sm font-semibold text-amber-900 transition hover:bg-amber-50 disabled:opacity-40"
-                onClick={async () => {
-                  setResettingCooldown(true);
-                  try {
-                    await onResetCooldown(project.id);
-                  } finally {
-                    setResettingCooldown(false);
-                  }
-                }}
-              >
-                {resettingCooldown ? "Resetting…" : "Reset cooldown (test)"}
-              </button>
+              <div className="relative inline-block">
+                <button
+                  type="button"
+                  disabled={resettingCooldown || alertsLocked}
+                  className="rounded-full border border-amber-700 px-4 py-2 text-sm font-semibold text-amber-900 transition hover:bg-amber-50 disabled:opacity-40"
+                  onClick={async () => {
+                    if (alertsLocked) return;
+                    setResettingCooldown(true);
+                    try {
+                      await onResetCooldown(project.id);
+                    } finally {
+                      setResettingCooldown(false);
+                    }
+                  }}
+                >
+                  {resettingCooldown ? "Resetting…" : "Reset cooldown (test)"}
+                </button>
+                {alertsLocked ? (
+                  <button
+                    type="button"
+                    className="absolute inset-0 z-10 cursor-pointer"
+                    aria-label="Alerts are off"
+                    onClick={() =>
+                      onBlocked({
+                        title: "Alerts are off",
+                        message:
+                          "Turn alerts on for this project to reset the cooldown or change settings.",
+                      })
+                    }
+                  />
+                ) : null}
+              </div>
             ) : null}
           </div>
         ) : null}
 
-        <div
-          className={`grid gap-3 sm:grid-cols-3 ${
-            alertsLocked ? "pointer-events-none opacity-40" : ""
-          }`}
-        >
-          <OutlinedField label="Max alerts" hint={HINTS.maxAlerts} muted={alertsLocked}>
-            <input
-              type="number"
-              min={1}
-              max={12}
-              disabled={alertsLocked}
-              className="w-full bg-transparent py-1.5 text-sm outline-none disabled:cursor-not-allowed"
-              value={draftMax}
-              onKeyDown={(e) => {
-                if (alertsLocked) return;
-                if (e.key === "ArrowDown" && draftMax <= project.maxAlertCount) {
-                  e.preventDefault();
-                  e.currentTarget.value = String(project.maxAlertCount);
-                  blockMaxDecrease();
-                }
-              }}
-              onChange={(e) => {
-                if (alertsLocked) return;
-                const value = clampInt(e.target.value, 1, 12);
-                if (value < project.maxAlertCount) {
-                  e.target.value = String(project.maxAlertCount);
-                  blockMaxDecrease();
-                  return;
-                }
-                setDraftMax(value);
-              }}
-            />
-          </OutlinedField>
-          <OutlinedField
-            label="Cooldown hours"
-            hint={HINTS.cooldownHours}
-            muted={alertsLocked}
+        <div className="relative">
+          <div
+            className={`grid gap-3 sm:grid-cols-3 ${
+              alertsLocked ? "opacity-40" : ""
+            }`}
           >
-            <input
-              type="number"
-              min={1}
-              max={72}
-              disabled={alertsLocked}
-              className="w-full bg-transparent py-1.5 text-sm outline-none disabled:cursor-not-allowed"
-              value={draftCooldown}
-              onChange={(e) => {
-                if (alertsLocked) return;
-                setDraftCooldown(clampInt(e.target.value, 1, 72));
-              }}
+            <OutlinedField label="Max alerts" hint={HINTS.maxAlerts} muted={alertsLocked}>
+              <input
+                type="number"
+                min={1}
+                max={12}
+                disabled={alertsLocked}
+                className="w-full bg-transparent py-1.5 text-sm outline-none disabled:cursor-not-allowed"
+                value={draftMax}
+                onKeyDown={(e) => {
+                  if (alertsLocked) return;
+                  if (e.key === "ArrowDown" && draftMax <= project.maxAlertCount) {
+                    e.preventDefault();
+                    e.currentTarget.value = String(project.maxAlertCount);
+                    blockMaxDecrease();
+                  }
+                }}
+                onChange={(e) => {
+                  if (alertsLocked) return;
+                  const value = clampInt(e.target.value, 1, 12);
+                  if (value < project.maxAlertCount) {
+                    e.target.value = String(project.maxAlertCount);
+                    blockMaxDecrease();
+                    return;
+                  }
+                  setDraftMax(value);
+                }}
+              />
+            </OutlinedField>
+            <OutlinedField
+              label="Cooldown hours"
+              hint={HINTS.cooldownHours}
+              muted={alertsLocked}
+            >
+              <input
+                type="number"
+                min={1}
+                max={72}
+                disabled={alertsLocked}
+                className="w-full bg-transparent py-1.5 text-sm outline-none disabled:cursor-not-allowed"
+                value={draftCooldown}
+                onChange={(e) => {
+                  if (alertsLocked) return;
+                  setDraftCooldown(clampInt(e.target.value, 1, 72));
+                }}
+              />
+            </OutlinedField>
+            <OutlinedField label="Alerts left this round" hint={HINTS.remaining} muted>
+              <input
+                readOnly
+                className="w-full cursor-default bg-transparent py-1.5 text-sm text-hs-muted outline-none"
+                value={project.remainingAlerts}
+                tabIndex={-1}
+              />
+            </OutlinedField>
+          </div>
+          {alertsLocked ? (
+            <button
+              type="button"
+              className="absolute inset-0 z-10 cursor-pointer rounded-xl"
+              aria-label="Alerts are off"
+              onClick={() =>
+                onBlocked({
+                  title: "Alerts are off",
+                  message:
+                    "Turn alerts on for this project if you want to change max alerts, cooldown hours, or other settings.",
+                })
+              }
             />
-          </OutlinedField>
-          <OutlinedField label="Alerts left this round" hint={HINTS.remaining} muted>
-            <input
-              readOnly
-              className="w-full cursor-default bg-transparent py-1.5 text-sm text-hs-muted outline-none"
-              value={project.remainingAlerts}
-              tabIndex={-1}
-            />
-          </OutlinedField>
+          ) : null}
         </div>
 
-        <div className="flex flex-wrap items-center gap-3 border-t border-hs-line pt-4">
+        <div className="relative flex flex-wrap items-center gap-3 border-t border-hs-line pt-4">
           <button
             type="button"
             className="btn-primary-sm disabled:opacity-40"
@@ -554,6 +587,20 @@ function ProjectCard({
           >
             Delete
           </button>
+          {alertsLocked ? (
+            <button
+              type="button"
+              className="absolute inset-0 z-10 cursor-pointer"
+              aria-label="Alerts are off"
+              onClick={() =>
+                onBlocked({
+                  title: "Alerts are off",
+                  message:
+                    "Turn alerts on for this project if you want to edit settings or delete it.",
+                })
+              }
+            />
+          ) : null}
         </div>
       </div>
       {confirmDelete ? (
