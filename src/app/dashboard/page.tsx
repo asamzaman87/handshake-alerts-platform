@@ -9,7 +9,7 @@ import {
   getToken,
   type Project,
 } from "@/lib/api";
-import { TEST_MODE, TEST_MODE_TASK_COUNT } from "@/lib/constants";
+import { TEST_MODE, TEST_MODE_TASK_COUNT, ALERT_MIN_INTERVAL_MS } from "@/lib/constants";
 
 const HINTS = {
   projectId:
@@ -360,12 +360,20 @@ function ProjectCard({
     if (draftMax !== project.maxAlertCount) body.maxAlertCount = draftMax;
     if (draftCooldown !== savedCooldown) body.alertCooldownHours = draftCooldown;
     if (Object.keys(body).length === 0) return;
+    const maxRaisedDuringCooldown =
+      project.onCooldown && draftMax !== project.maxAlertCount;
     const cooldownChangedDuringCooldown =
       project.onCooldown && draftCooldown !== savedCooldown;
     setSaving(true);
     try {
       await onPatch(project.id, body);
-      if (cooldownChangedDuringCooldown) {
+      if (maxRaisedDuringCooldown) {
+        onBlocked({
+          title: "Max alerts saved",
+          message:
+            "This higher max will take effect after the current cooldown finishes. The cooldown timer is not reset, and no extra alerts will send until then.",
+        });
+      } else if (cooldownChangedDuringCooldown) {
         onBlocked({
           title: "Cooldown hours saved",
           message:
@@ -655,12 +663,27 @@ export default function DashboardPage() {
                 lastPolledAt,
               };
             }
+            const lastAlertedMs = project.lastAlertedAt
+              ? new Date(project.lastAlertedAt).getTime()
+              : 0;
+            // Match production: at most one alert per poll interval.
+            if (
+              lastAlertedMs &&
+              Date.now() - lastAlertedMs < ALERT_MIN_INTERVAL_MS
+            ) {
+              return {
+                ...project,
+                lastAvailableCount: TEST_MODE_TASK_COUNT,
+                lastPolledAt,
+              };
+            }
             const nextRemaining = Math.max(0, project.remainingAlerts - 1);
             const hitCap = nextRemaining === 0;
             return {
               ...project,
               lastAvailableCount: TEST_MODE_TASK_COUNT,
               lastPolledAt,
+              lastAlertedAt: lastPolledAt,
               remainingAlerts: nextRemaining,
               alertsSentCount: project.alertsSentCount + 1,
               onCooldown: hitCap,
