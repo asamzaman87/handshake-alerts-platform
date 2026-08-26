@@ -24,11 +24,11 @@ const HINTS = {
   projectId:
     "The Handshake project UUID from the project page. The video above shows where to copy it.",
   maxAlerts:
-    "How many texts we will send for this project when tasks show up, before we pause. You can raise or lower this anytime. We send at most one text every 10 minutes.",
+    "How many texts we will send for this project when tasks show up, before the cooldown timer begins. You can raise or lower this anytime. We send at most one text every 10 minutes.",
   cooldownHours:
-    "After we hit max alerts, we stop texting for this project for this many hours. Then the count resets and we start again. Changing this during a cooldown applies to the next cooldown.",
+    "After we hit total alerts before cooldown, we stop texting for this project for this many hours. Then the count resets and we start again. Changing this during a cooldown applies to the next cooldown.",
   remaining:
-    "How many texts we can still send for this project before we pause. This drops as we text you, and it cannot go above Max alerts.",
+    "How many texts we can still send for this project before the cooldown timer begins. This drops as we text you, and it cannot go above total alerts before cooldown.",
 };
 
 function isProjectIdAddError(message: string) {
@@ -525,21 +525,21 @@ function ProjectCard({
 
       if (maxEffect === "cooldown_started") {
         onBlocked({
-          title: "Max alerts saved",
+          title: "Total alerts before cooldown saved",
           message:
-            "This round is used up under the new max, so a cooldown has started. After it ends, the next round will use your new max alerts.",
+            "This round is used up under the new limit, so a cooldown has started. After it ends, the next round will use your new total alerts before cooldown.",
         });
       } else if (maxEffect === "deferred" && coolEffect === "deferred") {
         onBlocked({
           title: "Settings saved",
           message:
-            "Your new max alerts and cooldown hours will take effect after the current cooldown finishes. The cooldown timer is not reset.",
+            "Your new total alerts before cooldown and cooldown hours will take effect after the current cooldown finishes. The cooldown timer is not reset.",
         });
       } else if (maxEffect === "deferred") {
         onBlocked({
-          title: "Max alerts saved",
+          title: "Total alerts before cooldown saved",
           message:
-            "This new max will take effect after the current cooldown finishes. The cooldown timer is not reset.",
+            "This new limit will take effect after the current cooldown finishes. The cooldown timer is not reset.",
         });
       } else if (coolEffect === "deferred") {
         onBlocked({
@@ -688,7 +688,7 @@ function ProjectCard({
             }`}
           >
             <OutlinedField
-              label="Max alerts"
+              label="Total alerts before cooldown"
               hint={HINTS.maxAlerts}
               muted={interactionLocked}
             >
@@ -723,7 +723,11 @@ function ProjectCard({
                 }}
               />
             </OutlinedField>
-            <OutlinedField label="Alerts left this round" hint={HINTS.remaining} muted>
+            <OutlinedField
+              label="Alerts left before cooldown"
+              hint={HINTS.remaining}
+              muted
+            >
               <input
                 readOnly
                 className="w-full cursor-default bg-transparent py-1.5 text-sm text-hs-muted outline-none"
@@ -741,7 +745,7 @@ function ProjectCard({
                 onBlocked({
                   title: "Alerts are off",
                   message:
-                    "Turn alerts on for this project if you want to change max alerts, cooldown hours, or other settings.",
+                    "Turn alerts on for this project if you want to change total alerts before cooldown, cooldown hours, or other settings.",
                 })
               }
             />
@@ -1210,7 +1214,7 @@ export default function DashboardPage() {
           </OutlinedField>
           <div className="grid gap-4 sm:grid-cols-2">
             <OutlinedField
-              label="Max alerts"
+              label="Total alerts before cooldown"
               hint={HINTS.maxAlerts}
               invalid={showAddErrors && maxAlertCount === ""}
             >
