@@ -63,7 +63,8 @@ export default function SignInPage() {
           Sign in with your phone
         </h1>
         <p className="mt-3 text-sm leading-relaxed text-hs-muted">
-          Enter your phone number to access Handshake Alerts. After you enable a
+          Enter a real mobile number to access Handshake Alerts. Google Voice,
+          VoIP, and landline numbers aren’t supported. After you enable a
           project, we send account notification texts when that Handshake AI
           project has claimable tasks.
         </p>
