@@ -388,6 +388,8 @@ function ProjectCard({
     }
   }
 
+  const alertsLocked = !project.alertsEnabled;
+
   return (
     <li className="overflow-hidden rounded-2xl border border-hs-line bg-white shadow-card">
       <div className="border-b border-hs-line bg-hs-bg px-5 py-4">
@@ -449,8 +451,8 @@ function ProjectCard({
             {TEST_MODE && onResetCooldown ? (
               <button
                 type="button"
-                disabled={resettingCooldown}
-                className="rounded-full border border-amber-700 px-4 py-2 text-sm font-semibold text-amber-900 transition hover:bg-amber-50 disabled:opacity-50"
+                disabled={resettingCooldown || alertsLocked}
+                className="rounded-full border border-amber-700 px-4 py-2 text-sm font-semibold text-amber-900 transition hover:bg-amber-50 disabled:opacity-40"
                 onClick={async () => {
                   setResettingCooldown(true);
                   try {
@@ -466,15 +468,21 @@ function ProjectCard({
           </div>
         ) : null}
 
-        <div className="grid gap-3 sm:grid-cols-3">
-          <OutlinedField label="Max alerts" hint={HINTS.maxAlerts}>
+        <div
+          className={`grid gap-3 sm:grid-cols-3 ${
+            alertsLocked ? "pointer-events-none opacity-40" : ""
+          }`}
+        >
+          <OutlinedField label="Max alerts" hint={HINTS.maxAlerts} muted={alertsLocked}>
             <input
               type="number"
               min={1}
               max={12}
-              className="w-full bg-transparent py-1.5 text-sm outline-none"
+              disabled={alertsLocked}
+              className="w-full bg-transparent py-1.5 text-sm outline-none disabled:cursor-not-allowed"
               value={draftMax}
               onKeyDown={(e) => {
+                if (alertsLocked) return;
                 if (e.key === "ArrowDown" && draftMax <= project.maxAlertCount) {
                   e.preventDefault();
                   e.currentTarget.value = String(project.maxAlertCount);
@@ -482,6 +490,7 @@ function ProjectCard({
                 }
               }}
               onChange={(e) => {
+                if (alertsLocked) return;
                 const value = clampInt(e.target.value, 1, 12);
                 if (value < project.maxAlertCount) {
                   e.target.value = String(project.maxAlertCount);
@@ -492,14 +501,20 @@ function ProjectCard({
               }}
             />
           </OutlinedField>
-          <OutlinedField label="Cooldown hours" hint={HINTS.cooldownHours}>
+          <OutlinedField
+            label="Cooldown hours"
+            hint={HINTS.cooldownHours}
+            muted={alertsLocked}
+          >
             <input
               type="number"
               min={1}
               max={72}
-              className="w-full bg-transparent py-1.5 text-sm outline-none"
+              disabled={alertsLocked}
+              className="w-full bg-transparent py-1.5 text-sm outline-none disabled:cursor-not-allowed"
               value={draftCooldown}
               onChange={(e) => {
+                if (alertsLocked) return;
                 setDraftCooldown(clampInt(e.target.value, 1, 72));
               }}
             />
@@ -518,7 +533,7 @@ function ProjectCard({
           <button
             type="button"
             className="btn-primary-sm disabled:opacity-40"
-            disabled={!dirty || saving}
+            disabled={alertsLocked || !dirty || saving}
             onClick={() => saveEdits()}
           >
             {saving ? "Saving…" : "Save changes"}
@@ -526,14 +541,15 @@ function ProjectCard({
           <button
             type="button"
             className="rounded-full border border-hs-line px-4 py-2 text-sm font-semibold text-hs-ink transition hover:border-hs-ink disabled:opacity-40"
-            disabled={!dirty || saving}
+            disabled={alertsLocked || !dirty || saving}
             onClick={cancelEdits}
           >
             Cancel
           </button>
           <button
             type="button"
-            className="ml-auto rounded-full border border-red-200 px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-50"
+            className="ml-auto rounded-full border border-red-200 px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-50 disabled:opacity-40"
+            disabled={alertsLocked}
             onClick={() => setConfirmDelete(true)}
           >
             Delete
