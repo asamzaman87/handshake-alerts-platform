@@ -393,9 +393,16 @@ function ProjectCard({
       <div className="border-b border-hs-line bg-hs-bg px-5 py-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="font-semibold text-hs-ink">
-              {project.displayName || "Untitled project"}
-            </p>
+            <div className="flex items-center gap-2">
+              <p className="font-semibold text-hs-ink">
+                {project.displayName || "Untitled project"}
+              </p>
+              <RefreshButton
+                spinning={refreshingTasks}
+                label="Refresh project status"
+                onClick={() => onRefreshTasks(project.id)}
+              />
+            </div>
             <p className="mt-1 truncate font-mono text-xs text-hs-muted">
               {project.handshakeProjectId}
             </p>
@@ -422,14 +429,10 @@ function ProjectCard({
               {tasksFoundLabel(project.lastAvailableCount)}
             </span>
           ) : null}
-          <RefreshButton
-            spinning={refreshingTasks}
-            label="Refresh task check"
-            onClick={() => onRefreshTasks(project.id)}
-          />
         </div>
 
-        {project.onCooldown && project.alertsCooldownUntil ? (
+        {(project.onCooldown && project.alertsCooldownUntil) ||
+        (project.remainingAlerts === 0 && project.alertsCooldownUntil) ? (
           <div className="space-y-3">
             <p className="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900">
               Cooldown time remaining:{" "}
@@ -664,44 +667,29 @@ export default function DashboardPage() {
             data.project?.lastPolledAt ??
             data.lastPolledAt ??
             new Date().toISOString();
-          if (TEST_MODE) {
-            // Refresh only updates check UI. Cooldown / remaining alerts are
-            // unchanged unless the user clicks Reset cooldown (test).
-            if (data.project) {
-              return {
-                ...project,
-                lastAvailableCount:
-                  data.project.lastAvailableCount ?? TEST_MODE_TASK_COUNT,
-                lastPolledAt:
-                  data.project.lastPolledAt ??
-                  data.lastPolledAt ??
-                  lastPolledAt,
-                remainingAlerts: data.project.remainingAlerts,
-                alertsSentCount: data.project.alertsSentCount,
-                onCooldown: data.project.onCooldown,
-                alertsCooldownUntil: data.project.alertsCooldownUntil,
-              };
-            }
-            return {
-              ...project,
-              lastAvailableCount: TEST_MODE_TASK_COUNT,
-              lastPolledAt,
-            };
-          }
+          // Always sync latest alert-round fields from the server. Refresh does
+          // not decrement alerts — it only reads current remaining/cooldown.
           if (data.project) {
             return {
               ...project,
-              lastAvailableCount: data.project.lastAvailableCount,
-              lastPolledAt: data.project.lastPolledAt,
+              lastAvailableCount: TEST_MODE
+                ? data.project.lastAvailableCount ?? TEST_MODE_TASK_COUNT
+                : data.project.lastAvailableCount,
+              lastPolledAt,
+              maxAlertCount: data.project.maxAlertCount,
+              alertCooldownHours: data.project.alertCooldownHours,
               remainingAlerts: data.project.remainingAlerts,
               alertsSentCount: data.project.alertsSentCount,
               onCooldown: data.project.onCooldown,
               alertsCooldownUntil: data.project.alertsCooldownUntil,
+              lastAlertedAt: data.project.lastAlertedAt,
             };
           }
           return {
             ...project,
-            lastAvailableCount: data.availableCount,
+            lastAvailableCount: TEST_MODE
+              ? TEST_MODE_TASK_COUNT
+              : data.availableCount,
             lastPolledAt,
           };
         })
