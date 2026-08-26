@@ -9,7 +9,7 @@ import {
   getToken,
   type Project,
 } from "@/lib/api";
-import { TEST_MODE, TEST_MODE_TASK_COUNT, ALERT_MIN_INTERVAL_MS } from "@/lib/constants";
+import { TEST_MODE, TEST_MODE_TASK_COUNT } from "@/lib/constants";
 
 const HINTS = {
   projectId:
@@ -293,6 +293,7 @@ function ProjectCard({
   onRefreshTasks,
   onRefreshStatus,
   onBlocked,
+  onResetCooldown,
 }: {
   project: Project;
   refreshingTasks: boolean;
@@ -301,11 +302,13 @@ function ProjectCard({
   onRefreshTasks: (id: string) => void;
   onRefreshStatus: (id: string) => void;
   onBlocked: (blocked: { title: string; message: string }) => void;
+  onResetCooldown?: (id: string) => Promise<void>;
 }) {
   const savedCooldown = project.alertCooldownHours ?? 3;
   const [draftMax, setDraftMax] = useState(project.maxAlertCount);
   const [draftCooldown, setDraftCooldown] = useState(savedCooldown);
   const [saving, setSaving] = useState(false);
+  const [resettingCooldown, setResettingCooldown] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const expiredRefresh = useRef(false);
@@ -427,14 +430,33 @@ function ProjectCard({
         </div>
 
         {project.onCooldown && project.alertsCooldownUntil ? (
-          <p className="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900">
-            Cooldown time remaining:{" "}
-            <span className="tabular-nums font-semibold">
-              {cooldownRemainingLabel(project.alertsCooldownUntil, now)}
-            </span>
-            . We will start checking this project again then, with a fresh alert
-            count.
-          </p>
+          <div className="space-y-3">
+            <p className="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900">
+              Cooldown time remaining:{" "}
+              <span className="tabular-nums font-semibold">
+                {cooldownRemainingLabel(project.alertsCooldownUntil, now)}
+              </span>
+              . We will start checking this project again then, with a fresh alert
+              count.
+            </p>
+            {TEST_MODE && onResetCooldown ? (
+              <button
+                type="button"
+                disabled={resettingCooldown}
+                className="rounded-full border border-amber-700 px-4 py-2 text-sm font-semibold text-amber-900 transition hover:bg-amber-50 disabled:opacity-50"
+                onClick={async () => {
+                  setResettingCooldown(true);
+                  try {
+                    await onResetCooldown(project.id);
+                  } finally {
+                    setResettingCooldown(false);
+                  }
+                }}
+              >
+                {resettingCooldown ? "Resetting…" : "Reset cooldown (test)"}
+              </button>
+            ) : null}
+          </div>
         ) : null}
 
         <div className="grid gap-3 sm:grid-cols-3">
@@ -663,27 +685,12 @@ export default function DashboardPage() {
                 lastPolledAt,
               };
             }
-            const lastAlertedMs = project.lastAlertedAt
-              ? new Date(project.lastAlertedAt).getTime()
-              : 0;
-            // Match production: at most one alert per poll interval.
-            if (
-              lastAlertedMs &&
-              Date.now() - lastAlertedMs < ALERT_MIN_INTERVAL_MS
-            ) {
-              return {
-                ...project,
-                lastAvailableCount: TEST_MODE_TASK_COUNT,
-                lastPolledAt,
-              };
-            }
             const nextRemaining = Math.max(0, project.remainingAlerts - 1);
             const hitCap = nextRemaining === 0;
             return {
               ...project,
               lastAvailableCount: TEST_MODE_TASK_COUNT,
               lastPolledAt,
-              lastAlertedAt: lastPolledAt,
               remainingAlerts: nextRemaining,
               alertsSentCount: project.alertsSentCount + 1,
               onCooldown: hitCap,
@@ -928,6 +935,30 @@ export default function DashboardPage() {
               onRefreshTasks={refreshTasks}
               onRefreshStatus={refreshStatus}
               onBlocked={setBlocked}
+              onResetCooldown={
+                TEST_MODE
+                  ? async (id) => {
+                      try {
+                        await patch(id, { resetCooldown: true });
+                      } catch {
+                        // Frontend-only test mode still clears local cooldown.
+                        setProjects((prev) =>
+                          prev.map((project) =>
+                            project.id === id
+                              ? {
+                                  ...project,
+                                  alertsSentCount: 0,
+                                  remainingAlerts: project.maxAlertCount,
+                                  alertsCooldownUntil: null,
+                                  onCooldown: false,
+                                }
+                              : project
+                          )
+                        );
+                      }
+                    }
+                  : undefined
+              }
             />
           ))}
           </ul>
