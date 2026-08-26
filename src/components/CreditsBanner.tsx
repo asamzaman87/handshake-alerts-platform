@@ -1,8 +1,54 @@
 import Link from "next/link";
 
-export function CreditsBanner({ credits }: { credits: number | null }) {
+export function CreditsBanner({
+  credits,
+  compact = false,
+}: {
+  credits: number | null;
+  compact?: boolean;
+}) {
   const balance = credits ?? null;
   const out = balance !== null && balance <= 0;
+
+  if (compact) {
+    return (
+      <div
+        className={`rounded-2xl border p-4 shadow-card md:self-start ${
+          out ? "border-red-200 bg-red-50" : "border-hs-line bg-white"
+        }`}
+      >
+        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-hs-muted">
+          Alert credits
+        </p>
+        <p
+          className={`mt-2 text-2xl font-semibold tracking-tight tabular-nums ${
+            out ? "text-red-700" : "text-hs-ink"
+          }`}
+        >
+          {balance === null
+            ? "…"
+            : `${balance}`}
+          <span className="ml-1.5 text-sm font-semibold text-hs-muted">
+            left
+          </span>
+        </p>
+        <p className="mt-1.5 text-xs leading-snug text-hs-muted">
+          1 credit = 1 SMS alert
+        </p>
+        {out ? (
+          <p className="mt-2 text-xs font-semibold leading-snug text-red-700">
+            No alerts until you buy more.
+          </p>
+        ) : null}
+        <Link href="/credits/" className="btn-primary-sm mt-3 w-full">
+          {out ? "Buy credits" : "Buy more"}
+          <span aria-hidden="true" className="ml-1.5">
+            →
+          </span>
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div

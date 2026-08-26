@@ -5,7 +5,6 @@ import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AlertNumberBanner } from "@/components/AlertNumberBanner";
-import { AddProjectScrollCue } from "@/components/AddProjectScrollCue";
 import { CreditsBanner } from "@/components/CreditsBanner";
 import { WelcomeCreditsModal } from "@/components/WelcomeCreditsModal";
 import { ZeroCreditsLockModal } from "@/components/ZeroCreditsLockModal";
@@ -1128,47 +1127,34 @@ export default function DashboardPage() {
     <main>
       <section className="relative overflow-hidden border-b border-hs-line bg-white">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(211,251,82,0.12),_transparent_45%)]" />
-        <div className="relative mx-auto max-w-5xl px-6 py-12">
-          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-hs-muted">
-            Dashboard
-          </p>
-          <h1 className="mt-3 text-3xl font-semibold tracking-tight text-hs-ink md:text-4xl">
-            Manage Handshake project alerts
-          </h1>
-          <p className="mt-3 max-w-2xl text-base leading-relaxed text-hs-muted">
-            Add projects, turn alerts on or off, and control how often we text
-            you when claimable tasks show up.
-          </p>
-          <div className="mt-6 flex flex-wrap gap-3">
-            <span className="rounded-full border border-hs-line bg-hs-bg px-4 py-2 text-sm font-medium text-hs-ink">
-              {projects.length} project{projects.length === 1 ? "" : "s"}
-            </span>
-            <span className="rounded-full border border-hs-line bg-hs-bg px-4 py-2 text-sm font-medium text-hs-ink">
-              {alertsOn} alert{alertsOn === 1 ? "" : "s"} on
-            </span>
-            {alertCredits !== null ? (
-              <span
-                className={`rounded-full border px-4 py-2 text-sm font-medium tabular-nums ${
-                  outOfCredits
-                    ? "border-red-300 bg-red-50 text-red-700"
-                    : "border-hs-line bg-hs-bg text-hs-ink"
-                }`}
-              >
-                {alertCredits} credit{alertCredits === 1 ? "" : "s"} left
+        <div className="relative mx-auto grid max-w-5xl gap-6 px-6 py-12 md:grid-cols-[minmax(0,1fr)_15.5rem] md:items-start md:gap-8">
+          <div className="min-w-0">
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-hs-muted">
+              Dashboard
+            </p>
+            <h1 className="mt-3 text-3xl font-semibold tracking-tight text-hs-ink md:text-4xl">
+              Manage Handshake project alerts
+            </h1>
+            <p className="mt-3 max-w-xl text-base leading-relaxed text-hs-muted">
+              Add projects, turn alerts on or off, and control how often we text
+              you when claimable tasks show up.
+            </p>
+            <div className="mt-6 flex flex-wrap gap-3">
+              <span className="rounded-full border border-hs-line bg-hs-bg px-4 py-2 text-sm font-medium text-hs-ink">
+                {projects.length} project{projects.length === 1 ? "" : "s"}
               </span>
-            ) : null}
+              <span className="rounded-full border border-hs-line bg-hs-bg px-4 py-2 text-sm font-medium text-hs-ink">
+                {alertsOn} alert{alertsOn === 1 ? "" : "s"} on
+              </span>
+            </div>
           </div>
+          <CreditsBanner credits={alertCredits} compact />
         </div>
       </section>
 
       <div className="relative">
-        <AddProjectScrollCue />
-
       <div className="mx-auto max-w-5xl px-6 py-10">
-      <div className="space-y-4">
-        <CreditsBanner credits={alertCredits} />
-        <AlertNumberBanner />
-      </div>
+      <AlertNumberBanner />
 
       <form
         id="add-project"
