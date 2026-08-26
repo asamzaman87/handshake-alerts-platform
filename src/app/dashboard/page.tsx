@@ -748,6 +748,7 @@ export default function DashboardPage() {
   const [cooldownHours, setCooldownHours] = useState<number | "">(1);
   const [showAddErrors, setShowAddErrors] = useState(false);
   const [error, setError] = useState("");
+  const [addError, setAddError] = useState("");
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
   const [refreshingTasksId, setRefreshingTasksId] = useState<string | null>(null);
@@ -792,6 +793,7 @@ export default function DashboardPage() {
   async function addProject(e: FormEvent) {
     e.preventDefault();
     setError("");
+    setAddError("");
     setNotice("");
     const missingProjectId = !projectId.trim();
     const missingMax = maxAlertCount === "";
@@ -816,7 +818,7 @@ export default function DashboardPage() {
       setShowAddErrors(false);
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to add project");
+      setAddError(err instanceof Error ? err.message : "Failed to add project");
     } finally {
       setBusy(false);
     }
@@ -968,6 +970,11 @@ export default function DashboardPage() {
             allowFullScreen
           />
         </div>
+        {addError ? (
+          <p className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {addError}
+          </p>
+        ) : null}
         <div className="mt-6 grid gap-4">
           <OutlinedField
             label="Project ID"
@@ -977,7 +984,10 @@ export default function DashboardPage() {
             <input
               className="w-full bg-transparent py-1.5 font-mono text-sm outline-none"
               value={projectId}
-              onChange={(e) => setProjectId(e.target.value)}
+              onChange={(e) => {
+                setProjectId(e.target.value);
+                if (addError) setAddError("");
+              }}
             />
           </OutlinedField>
           <div className="grid gap-4 sm:grid-cols-2">

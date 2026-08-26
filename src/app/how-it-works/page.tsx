@@ -21,7 +21,7 @@ export default function HowItWorksPage() {
         <div className="mt-12 grid gap-10 lg:grid-cols-2 lg:items-start">
           <ol className="space-y-8">
             <li className="rounded-2xl border border-hs-line bg-white p-6">
-              <p className="text-sm font-semibold text-hs-accent">Step 1</p>
+              <p className="text-sm font-semibold text-[#86C91A]">Step 1</p>
               <h2 className="mt-2 text-xl font-semibold">Sign in with your phone</h2>
               <p className="mt-2 text-sm leading-relaxed text-hs-muted">
                 Enter your number on the sign-in page and agree to receive
@@ -30,7 +30,7 @@ export default function HowItWorksPage() {
               </p>
             </li>
             <li className="rounded-2xl border border-hs-line bg-white p-6">
-              <p className="text-sm font-semibold text-hs-accent">Step 2</p>
+              <p className="text-sm font-semibold text-[#86C91A]">Step 2</p>
               <h2 className="mt-2 text-xl font-semibold">Add project IDs</h2>
               <p className="mt-2 text-sm leading-relaxed text-hs-muted">
                 Paste Handshake AI project UUIDs into your dashboard. Each
@@ -39,7 +39,7 @@ export default function HowItWorksPage() {
               </p>
             </li>
             <li className="rounded-2xl border border-hs-line bg-white p-6">
-              <p className="text-sm font-semibold text-hs-accent">Step 3</p>
+              <p className="text-sm font-semibold text-[#86C91A]">Step 3</p>
               <h2 className="mt-2 text-xl font-semibold">Receive task alerts</h2>
               <p className="mt-2 text-sm leading-relaxed text-hs-muted">
                 About every 10 minutes we check each enabled project. If more
