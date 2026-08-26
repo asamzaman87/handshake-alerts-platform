@@ -4,6 +4,7 @@ import { FormEvent, ReactNode, useEffect, useLayoutEffect, useRef, useState } fr
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { AlertNumberBanner } from "@/components/AlertNumberBanner";
+import { ToastStack, type ToastItem } from "@/components/ToastStack";
 import {
   api,
   clearToken,
@@ -387,6 +388,7 @@ function ProjectCard({
   onRefreshStatus,
   onBlocked,
   onResetCooldown,
+  onToast,
 }: {
   project: Project;
   refreshingTasks: boolean;
@@ -405,6 +407,7 @@ function ProjectCard({
   onRefreshStatus: (id: string) => Promise<Project | null>;
   onBlocked: (blocked: { title: string; message: string }) => void;
   onResetCooldown: (id: string) => Promise<void>;
+  onToast: (message: string) => void;
 }) {
   const savedCooldown = project.alertCooldownHours ?? 3;
   const [draftMax, setDraftMax] = useState(project.maxAlertCount);
@@ -489,6 +492,7 @@ function ProjectCard({
       const effects = result.effects ?? {};
       const maxEffect = effects.maxAlertCount;
       const coolEffect = effects.alertCooldownHours;
+      const name = project.displayName || "Untitled project";
 
       if (maxEffect === "cooldown_started") {
         onBlocked({
@@ -515,6 +519,8 @@ function ProjectCard({
             "This new cooldown will take effect the next time this project cools down. The current cooldown is not affected.",
         });
       }
+
+      onToast(`Saved changes for ${name}.`);
     } catch {
       // Parent onPatch already surfaces the error.
     } finally {
@@ -734,8 +740,13 @@ function ProjectCard({
           confirmLabel="Delete"
           onCancel={() => setConfirmDelete(false)}
           onConfirm={() => {
+            const name = project.displayName || "Untitled project";
             setConfirmDelete(false);
-            onRemove(project.id);
+            void onRemove(project.id)
+              .then(() => {
+                onToast(`${name} was deleted.`);
+              })
+              .catch(() => undefined);
           }}
         />
       ) : null}
@@ -759,6 +770,16 @@ export default function DashboardPage() {
   const [refreshingTasksId, setRefreshingTasksId] = useState<string | null>(null);
   const [retryingLoad, setRetryingLoad] = useState(false);
   const [blocked, setBlocked] = useState<{ title: string; message: string } | null>(null);
+  const [toasts, setToasts] = useState<ToastItem[]>([]);
+
+  function showToast(message: string) {
+    const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    setToasts((prev) => [...prev, { id, message }]);
+  }
+
+  function dismissToast(id: string) {
+    setToasts((prev) => prev.filter((toast) => toast.id !== id));
+  }
 
   async function load() {
     const data = await api<{ projects: Project[] }>("/api/handshake/projects");
@@ -853,7 +874,7 @@ export default function DashboardPage() {
     }
     setBusy(true);
     try {
-      await api("/api/handshake/projects", {
+      const data = await api<{ project: Project }>("/api/handshake/projects", {
         method: "POST",
         body: JSON.stringify({
           handshakeProjectId: projectId.trim(),
@@ -866,6 +887,10 @@ export default function DashboardPage() {
       setCooldownHours(1);
       setShowAddErrors(false);
       await load();
+      const name = data.project.displayName || "Untitled project";
+      showToast(
+        `${name} was successfully added. Scroll down to view it in Your projects.`
+      );
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Failed to add project";
@@ -1158,6 +1183,7 @@ export default function DashboardPage() {
                   await remove(id);
                 } catch (err) {
                   setError(err instanceof Error ? err.message : "Delete failed");
+                  throw err;
                 }
               }}
               onRefreshTasks={refreshTasks}
@@ -1173,6 +1199,7 @@ export default function DashboardPage() {
                   throw err;
                 }
               }}
+              onToast={showToast}
             />
           ))}
           </ul>
@@ -1185,6 +1212,7 @@ export default function DashboardPage() {
           onClose={() => setBlocked(null)}
         />
       ) : null}
+      <ToastStack toasts={toasts} onDismiss={dismissToast} />
       </div>
     </main>
   );

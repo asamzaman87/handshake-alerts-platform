@@ -8,7 +8,7 @@ export function AlertNumberBanner() {
         Task alerts come from our verified toll-free number. Add it to your
         contacts so you recognize texts from Handshake Alerts.
       </p>
-      <p className="mt-4 inline-flex items-center rounded-full border border-hs-line bg-hs-bg px-4 py-2 font-mono text-base font-semibold tabular-nums tracking-normal text-hs-ink">
+      <p className="mt-4 inline-flex items-center rounded-full border border-hs-line bg-hs-bg px-4 py-2 text-base font-semibold tracking-tight text-hs-ink">
         {ALERT_FROM_NUMBER_DISPLAY}
       </p>
     </div>
