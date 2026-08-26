@@ -1,3 +1,5 @@
+import { TEST_MODE } from "./constants";
+
 const TOKEN_KEY = "handshake-alerts-token";
 
 export function getApiBase() {
@@ -51,10 +53,12 @@ export type Project = {
 };
 
 export const CHECK_INTERVAL_OPTIONS = [
+  ...(TEST_MODE ? ([1] as const) : ([] as const)),
   10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 160, 170, 180,
 ] as const;
 
 export function formatCheckInterval(minutes: number) {
+  if (minutes === 1) return "About every 1 minute";
   if (minutes < 60) return `About every ${minutes} minutes`;
   if (minutes === 60) return "About every 1 hour";
   const hours = minutes / 60;
