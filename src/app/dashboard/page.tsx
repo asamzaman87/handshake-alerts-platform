@@ -15,9 +15,9 @@ const HINTS = {
   projectId:
     "The Handshake project UUID from the project page. The video above shows where to copy it.",
   maxAlerts:
-    "How many texts we will send for this project when tasks show up, before we pause. We send at most one text every 10 minutes.",
+    "How many texts we will send for this project when tasks show up, before we pause. You can raise or lower this anytime. We send at most one text every 10 minutes.",
   cooldownHours:
-    "After we hit max alerts, we stop texting for this project for this many hours. Then the count resets and we start again.",
+    "After we hit max alerts, we stop texting for this project for this many hours. Then the count resets and we start again. Changing this during a cooldown applies to the next cooldown.",
   remaining:
     "How many texts we can still send for this project before we pause. This drops as we text you, and it cannot go above Max alerts.",
 };
@@ -297,12 +297,21 @@ function ProjectCard({
 }: {
   project: Project;
   refreshingTasks: boolean;
-  onPatch: (id: string, body: Record<string, unknown>) => Promise<void>;
+  onPatch: (
+    id: string,
+    body: Record<string, unknown>
+  ) => Promise<{
+    project: Project;
+    effects?: {
+      maxAlertCount?: "updated" | "deferred" | "cooldown_started";
+      alertCooldownHours?: "updated" | "deferred";
+    };
+  }>;
   onRemove: (id: string) => Promise<void>;
   onRefreshTasks: (id: string) => void;
-  onRefreshStatus: (id: string) => void;
+  onRefreshStatus: (id: string) => Promise<Project | null>;
   onBlocked: (blocked: { title: string; message: string }) => void;
-  onResetCooldown?: (id: string) => Promise<void>;
+  onResetCooldown: (id: string) => Promise<void>;
 }) {
   const savedCooldown = project.alertCooldownHours ?? 3;
   const [draftMax, setDraftMax] = useState(project.maxAlertCount);
@@ -349,40 +358,57 @@ function ProjectCard({
     setDraftCooldown(savedCooldown);
   }
 
-  function blockMaxDecrease() {
-    setDraftMax(project.maxAlertCount);
-    onBlocked({
-      title: "Can't lower this setting",
-      message:
-        "You can't lower max alerts on a project that's already added. Delete the project and add it again if you want a smaller number.",
-    });
-  }
-
   async function saveEdits() {
-    const body: Record<string, unknown> = {};
-    if (draftMax !== project.maxAlertCount) body.maxAlertCount = draftMax;
-    if (draftCooldown !== savedCooldown) body.alertCooldownHours = draftCooldown;
-    if (Object.keys(body).length === 0) return;
-    const maxRaisedDuringCooldown =
-      project.onCooldown && draftMax !== project.maxAlertCount;
-    const cooldownChangedDuringCooldown =
-      project.onCooldown && draftCooldown !== savedCooldown;
+    if (!dirty) return;
+
     setSaving(true);
     try {
-      await onPatch(project.id, body);
-      if (maxRaisedDuringCooldown) {
+      // Sync latest server state before applying settings changes.
+      const fresh = await onRefreshStatus(project.id);
+      if (!fresh) {
+        onBlocked({
+          title: "Project not found",
+          message:
+            "This project is no longer available. Refresh the page and try again.",
+        });
+        return;
+      }
+
+      const body: Record<string, unknown> = {};
+      if (draftMax !== fresh.maxAlertCount) body.maxAlertCount = draftMax;
+      if (draftCooldown !== (fresh.alertCooldownHours ?? 3)) {
+        body.alertCooldownHours = draftCooldown;
+      }
+      if (Object.keys(body).length === 0) {
+        setDraftMax(fresh.maxAlertCount);
+        setDraftCooldown(fresh.alertCooldownHours ?? 3);
+        return;
+      }
+
+      const result = await onPatch(project.id, body);
+      const effects = result.effects ?? {};
+
+      if (effects.maxAlertCount === "cooldown_started") {
         onBlocked({
           title: "Max alerts saved",
           message:
-            "This higher max will take effect after the current cooldown finishes. The cooldown timer is not reset, and no extra alerts will send until then.",
+            "This round is used up under the new max, so a cooldown has started. After it ends, the next round will use your new max alerts.",
         });
-      } else if (cooldownChangedDuringCooldown) {
+      } else if (effects.maxAlertCount === "deferred") {
+        onBlocked({
+          title: "Max alerts saved",
+          message:
+            "This new max will take effect after the current cooldown finishes. The cooldown timer is not reset.",
+        });
+      } else if (effects.alertCooldownHours === "deferred") {
         onBlocked({
           title: "Cooldown hours saved",
           message:
             "This new cooldown will take effect the next time this project cools down. The current cooldown is not affected.",
         });
       }
+    } catch {
+      // Parent onPatch already surfaces the error.
     } finally {
       setSaving(false);
     }
@@ -411,9 +437,11 @@ function ProjectCard({
           </div>
           <AlertsToggle
             on={project.alertsEnabled}
-            onToggle={() =>
-              onPatch(project.id, { alertsEnabled: !project.alertsEnabled })
-            }
+            onToggle={() => {
+              void onPatch(project.id, {
+                alertsEnabled: !project.alertsEnabled,
+              }).catch(() => undefined);
+            }}
           />
         </div>
       </div>
@@ -439,48 +467,50 @@ function ProjectCard({
 
         {(project.onCooldown && project.alertsCooldownUntil) ||
         (project.remainingAlerts === 0 && project.alertsCooldownUntil) ? (
-          <div className="space-y-3">
-            <p className="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900">
-              Cooldown time remaining:{" "}
-              <span className="tabular-nums font-semibold">
-                {cooldownRemainingLabel(project.alertsCooldownUntil, now)}
-              </span>
-              . We will start checking this project again then, with a fresh alert
-              count.
-            </p>
-            {TEST_MODE && onResetCooldown ? (
-              <div className="relative inline-block">
-                <button
-                  type="button"
-                  disabled={resettingCooldown || alertsLocked}
-                  className="rounded-full border border-amber-700 px-4 py-2 text-sm font-semibold text-amber-900 transition hover:bg-amber-50 disabled:opacity-40"
-                  onClick={async () => {
-                    if (alertsLocked) return;
-                    setResettingCooldown(true);
-                    try {
-                      await onResetCooldown(project.id);
-                    } finally {
-                      setResettingCooldown(false);
-                    }
-                  }}
-                >
-                  {resettingCooldown ? "Resetting…" : "Reset cooldown (test)"}
-                </button>
-                {alertsLocked ? (
-                  <button
-                    type="button"
-                    className="absolute inset-0 z-10 cursor-pointer"
-                    aria-label="Alerts are off"
-                    onClick={() =>
-                      onBlocked({
-                        title: "Alerts are off",
-                        message:
-                          "Turn alerts on for this project to reset the cooldown or change settings.",
-                      })
-                    }
-                  />
-                ) : null}
-              </div>
+          <div className="relative">
+            <div
+              className={`flex flex-wrap items-center justify-between gap-3 rounded-xl bg-amber-50 px-4 py-3 ${
+                alertsLocked ? "opacity-40" : ""
+              }`}
+            >
+              <p className="text-sm text-amber-900">
+                Cooldown time remaining:{" "}
+                <span className="tabular-nums font-semibold">
+                  {cooldownRemainingLabel(project.alertsCooldownUntil, now)}
+                </span>
+                . We will start checking this project again then, with a fresh
+                alert count.
+              </p>
+              <button
+                type="button"
+                disabled={resettingCooldown || alertsLocked}
+                className="shrink-0 rounded-full border border-amber-700 px-4 py-2 text-sm font-semibold text-amber-900 transition hover:bg-amber-100/80 disabled:opacity-40"
+                onClick={async () => {
+                  if (alertsLocked) return;
+                  setResettingCooldown(true);
+                  try {
+                    await onResetCooldown(project.id);
+                  } finally {
+                    setResettingCooldown(false);
+                  }
+                }}
+              >
+                {resettingCooldown ? "Resetting…" : "Reset cooldown"}
+              </button>
+            </div>
+            {alertsLocked ? (
+              <button
+                type="button"
+                className="absolute inset-0 z-10 cursor-pointer rounded-xl"
+                aria-label="Alerts are off"
+                onClick={() =>
+                  onBlocked({
+                    title: "Alerts are off",
+                    message:
+                      "Turn alerts on for this project to reset the cooldown or change settings.",
+                  })
+                }
+              />
             ) : null}
           </div>
         ) : null}
@@ -499,23 +529,9 @@ function ProjectCard({
                 disabled={alertsLocked}
                 className="w-full bg-transparent py-1.5 text-sm outline-none disabled:cursor-not-allowed"
                 value={draftMax}
-                onKeyDown={(e) => {
-                  if (alertsLocked) return;
-                  if (e.key === "ArrowDown" && draftMax <= project.maxAlertCount) {
-                    e.preventDefault();
-                    e.currentTarget.value = String(project.maxAlertCount);
-                    blockMaxDecrease();
-                  }
-                }}
                 onChange={(e) => {
                   if (alertsLocked) return;
-                  const value = clampInt(e.target.value, 1, 12);
-                  if (value < project.maxAlertCount) {
-                    e.target.value = String(project.maxAlertCount);
-                    blockMaxDecrease();
-                    return;
-                  }
-                  setDraftMax(value);
+                  setDraftMax(clampInt(e.target.value, 1, 12));
                 }}
               />
             </OutlinedField>
@@ -704,11 +720,18 @@ export default function DashboardPage() {
 
   async function patch(id: string, body: Record<string, unknown>) {
     setError("");
-    const data = await api<{ project: Project }>(`/api/handshake/projects/${id}`, {
+    const data = await api<{
+      project: Project;
+      effects?: {
+        maxAlertCount?: "updated" | "deferred" | "cooldown_started";
+        alertCooldownHours?: "updated" | "deferred";
+      };
+    }>(`/api/handshake/projects/${id}`, {
       method: "PATCH",
       body: JSON.stringify(body),
     });
     setProjects((prev) => prev.map((p) => (p.id === id ? data.project : p)));
+    return data;
   }
 
   async function remove(id: string) {
@@ -773,25 +796,11 @@ export default function DashboardPage() {
     setNotice("");
     try {
       const data = await api<{ projects: Project[] }>("/api/handshake/projects");
-      const updated = data.projects.find((project) => project.id === id);
-      if (!updated) return;
-      setProjects((prev) =>
-        prev.map((project) =>
-          project.id === id
-            ? {
-                ...project,
-                maxAlertCount: updated.maxAlertCount,
-                alertCooldownHours: updated.alertCooldownHours,
-                remainingAlerts: updated.remainingAlerts,
-                alertsSentCount: updated.alertsSentCount,
-                alertsCooldownUntil: updated.alertsCooldownUntil,
-                onCooldown: updated.onCooldown,
-              }
-            : project
-        )
-      );
+      setProjects(data.projects);
+      return data.projects.find((project) => project.id === id) ?? null;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Refresh failed");
+      return null;
     }
   }
 
@@ -962,9 +971,10 @@ export default function DashboardPage() {
               refreshingTasks={refreshingTasksId === project.id}
               onPatch={async (id, body) => {
                 try {
-                  await patch(id, body);
+                  return await patch(id, body);
                 } catch (err) {
                   setError(err instanceof Error ? err.message : "Update failed");
+                  throw err;
                 }
               }}
               onRemove={async (id) => {
@@ -977,30 +987,16 @@ export default function DashboardPage() {
               onRefreshTasks={refreshTasks}
               onRefreshStatus={refreshStatus}
               onBlocked={setBlocked}
-              onResetCooldown={
-                TEST_MODE
-                  ? async (id) => {
-                      try {
-                        await patch(id, { resetCooldown: true });
-                      } catch {
-                        // Frontend-only test mode still clears local cooldown.
-                        setProjects((prev) =>
-                          prev.map((project) =>
-                            project.id === id
-                              ? {
-                                  ...project,
-                                  alertsSentCount: 0,
-                                  remainingAlerts: project.maxAlertCount,
-                                  alertsCooldownUntil: null,
-                                  onCooldown: false,
-                                }
-                              : project
-                          )
-                        );
-                      }
-                    }
-                  : undefined
-              }
+              onResetCooldown={async (id) => {
+                try {
+                  await patch(id, { resetCooldown: true });
+                } catch (err) {
+                  setError(
+                    err instanceof Error ? err.message : "Failed to reset cooldown"
+                  );
+                  throw err;
+                }
+              }}
             />
           ))}
           </ul>
