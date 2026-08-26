@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { clearToken, getToken } from "@/lib/api";
 
-type NavKey = "home" | "how" | "faq" | "contact" | "dashboard";
+type NavKey = "home" | "how" | "faq" | "contact" | "dashboard" | "feedback";
 
 export function SiteHeader({ active }: { active?: NavKey }) {
   const router = useRouter();
@@ -51,6 +51,9 @@ export function SiteHeader({ active }: { active?: NavKey }) {
           </Link>
           <Link href="/faq/" className={linkClass("faq")}>
             FAQ
+          </Link>
+          <Link href="/feedback/" className={linkClass("feedback")}>
+            Give feedback
           </Link>
           <Link href="/contact/" className={linkClass("contact")}>
             Contact

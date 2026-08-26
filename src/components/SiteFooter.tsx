@@ -32,6 +32,11 @@ export function SiteFooter() {
               </Link>
             </li>
             <li>
+              <Link href="/feedback/" className="hover:text-hs-accent">
+                Give feedback
+              </Link>
+            </li>
+            <li>
               <Link href="/sign-in/" className="hover:text-hs-accent">
                 Sign in
               </Link>
