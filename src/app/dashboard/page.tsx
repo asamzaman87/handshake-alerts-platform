@@ -8,7 +8,6 @@ import { AlertNumberBanner } from "@/components/AlertNumberBanner";
 import { CreditsBanner } from "@/components/CreditsBanner";
 import {
   WelcomeCreditsModal,
-  hasSeenWelcome,
 } from "@/components/WelcomeCreditsModal";
 import { ToastStack, type ToastItem } from "@/components/ToastStack";
 import {
@@ -817,10 +816,13 @@ export default function DashboardPage() {
   }
 
   async function loadCredits() {
-    const data = await api<{ user: { alertCredits: number } }>(
-      "/api/handshake/me"
-    );
+    const data = await api<{
+      user: { alertCredits: number; welcomeSeen?: boolean };
+    }>("/api/handshake/me");
     setAlertCredits(data.user.alertCredits);
+    if (data.user.welcomeSeen === false) {
+      setShowWelcome(true);
+    }
   }
 
   async function load() {
@@ -902,11 +904,6 @@ export default function DashboardPage() {
       .finally(() => setReady(true));
     // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only dashboard bootstrap
   }, [router]);
-
-  useEffect(() => {
-    if (!ready) return;
-    if (!hasSeenWelcome()) setShowWelcome(true);
-  }, [ready]);
 
   useEffect(() => {
     const next = projects

@@ -1,17 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-
-const WELCOME_KEY = "handshake-alerts-welcome-seen";
-
-export function hasSeenWelcome(): boolean {
-  if (typeof window === "undefined") return true;
-  return window.localStorage.getItem(WELCOME_KEY) === "1";
-}
-
-export function markWelcomeSeen() {
-  window.localStorage.setItem(WELCOME_KEY, "1");
-}
+import { api } from "@/lib/api";
 
 function burstConfetti(canvas: HTMLCanvasElement) {
   const ctx = canvas.getContext("2d");
@@ -81,6 +71,7 @@ function burstConfetti(canvas: HTMLCanvasElement) {
 
 export function WelcomeCreditsModal({ onClose }: { onClose: () => void }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const savingRef = useRef(false);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -88,14 +79,20 @@ export function WelcomeCreditsModal({ onClose }: { onClose: () => void }) {
     return burstConfetti(canvas);
   }, []);
 
-  function dismiss() {
-    markWelcomeSeen();
+  async function dismiss() {
+    if (savingRef.current) return;
+    savingRef.current = true;
+    try {
+      await api("/api/handshake/me/welcome-seen", { method: "POST" });
+    } catch {
+      // Still close locally; next login will retry until the flag sticks.
+    }
     onClose();
   }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-      <div className="absolute inset-0 bg-hs-dark/45 backdrop-blur-sm" onClick={dismiss} />
+      <div className="absolute inset-0 bg-hs-dark/45 backdrop-blur-sm" onClick={() => void dismiss()} />
       <canvas
         ref={canvasRef}
         className="pointer-events-none absolute inset-0 z-[1]"
@@ -121,7 +118,11 @@ export function WelcomeCreditsModal({ onClose }: { onClose: () => void }) {
         <div className="mt-5 inline-flex items-center rounded-full border border-hs-line bg-hs-bg px-4 py-2 text-sm font-semibold text-hs-ink">
           5 free credits ready
         </div>
-        <button type="button" className="btn-primary mt-6 w-full" onClick={dismiss}>
+        <button
+          type="button"
+          className="btn-primary mt-6 w-full"
+          onClick={() => void dismiss()}
+        >
           Let’s go
         </button>
       </div>
