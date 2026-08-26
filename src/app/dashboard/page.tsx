@@ -744,8 +744,8 @@ export default function DashboardPage() {
   const [ready, setReady] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
   const [projectId, setProjectId] = useState("");
-  const [maxAlertCount, setMaxAlertCount] = useState<number | "">("");
-  const [cooldownHours, setCooldownHours] = useState<number | "">("");
+  const [maxAlertCount, setMaxAlertCount] = useState<number | "">(1);
+  const [cooldownHours, setCooldownHours] = useState<number | "">(1);
   const [showAddErrors, setShowAddErrors] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -811,8 +811,8 @@ export default function DashboardPage() {
         }),
       });
       setProjectId("");
-      setMaxAlertCount("");
-      setCooldownHours("");
+      setMaxAlertCount(1);
+      setCooldownHours(1);
       setShowAddErrors(false);
       await load();
     } catch (err) {
