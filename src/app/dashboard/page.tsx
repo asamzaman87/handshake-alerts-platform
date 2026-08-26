@@ -2,6 +2,7 @@
 
 import { FormEvent, ReactNode, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AlertNumberBanner } from "@/components/AlertNumberBanner";
 import { ToastStack, type ToastItem } from "@/components/ToastStack";
@@ -257,23 +258,38 @@ function MessageModal({
   title,
   message,
   onClose,
+  actionHref,
+  actionLabel,
 }: {
   title: string;
   message: string;
   onClose: () => void;
+  actionHref?: string;
+  actionLabel?: string;
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-hs-dark/40 px-4 backdrop-blur-sm">
       <div className="w-full max-w-sm rounded-2xl border border-hs-line bg-white p-6 shadow-card">
         <p className="text-lg font-semibold text-hs-ink">{title}</p>
         <p className="mt-2 text-sm leading-relaxed text-hs-muted">{message}</p>
-        <button
-          type="button"
-          className="btn-primary mt-5 w-full"
-          onClick={onClose}
-        >
-          OK
-        </button>
+        <div className="mt-5 flex flex-col gap-2">
+          {actionHref && actionLabel ? (
+            <Link href={actionHref} className="btn-primary w-full text-center" onClick={onClose}>
+              {actionLabel}
+            </Link>
+          ) : null}
+          <button
+            type="button"
+            className={
+              actionHref
+                ? "w-full rounded-full border border-hs-line bg-white px-4 py-2.5 text-sm font-semibold text-hs-ink transition hover:bg-hs-bg"
+                : "btn-primary w-full"
+            }
+            onClick={onClose}
+          >
+            {actionHref ? "Not now" : "OK"}
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -758,6 +774,7 @@ export default function DashboardPage() {
   const router = useRouter();
   const [ready, setReady] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
+  const [alertCredits, setAlertCredits] = useState<number | null>(null);
   const [projectId, setProjectId] = useState("");
   const [maxAlertCount, setMaxAlertCount] = useState<number | "">(1);
   const [cooldownHours, setCooldownHours] = useState<number | "">(1);
@@ -769,7 +786,12 @@ export default function DashboardPage() {
   const [busy, setBusy] = useState(false);
   const [refreshingTasksId, setRefreshingTasksId] = useState<string | null>(null);
   const [retryingLoad, setRetryingLoad] = useState(false);
-  const [blocked, setBlocked] = useState<{ title: string; message: string } | null>(null);
+  const [blocked, setBlocked] = useState<{
+    title: string;
+    message: string;
+    actionHref?: string;
+    actionLabel?: string;
+  } | null>(null);
   const [toasts, setToasts] = useState<ToastItem[]>([]);
 
   function showToast(message: string) {
@@ -781,9 +803,36 @@ export default function DashboardPage() {
     setToasts((prev) => prev.filter((toast) => toast.id !== id));
   }
 
+  async function loadCredits() {
+    const data = await api<{ user: { alertCredits: number } }>(
+      "/api/handshake/me"
+    );
+    setAlertCredits(data.user.alertCredits);
+  }
+
   async function load() {
-    const data = await api<{ projects: Project[] }>("/api/handshake/projects");
-    setProjects(data.projects);
+    const [projectsData] = await Promise.all([
+      api<{ projects: Project[] }>("/api/handshake/projects"),
+      loadCredits().catch(() => undefined),
+    ]);
+    setProjects(projectsData.projects);
+  }
+
+  function isOutOfCreditsError(message: string) {
+    return /out of alert credits|buy more credits|no alert credits/i.test(
+      message
+    );
+  }
+
+  function showOutOfCreditsModal(message?: string) {
+    setBlocked({
+      title: "Out of credits",
+      message:
+        message ||
+        "You’re out of alert credits. Buy more to keep receiving SMS alerts.",
+      actionHref: "/credits/",
+      actionLabel: "Buy credits",
+    });
   }
 
   async function loadWithRetries(retries = 2) {
@@ -874,7 +923,11 @@ export default function DashboardPage() {
     }
     setBusy(true);
     try {
-      const data = await api<{ project: Project }>("/api/handshake/projects", {
+      const data = await api<{
+        project: Project;
+        alertCredits?: number;
+        notice?: string;
+      }>("/api/handshake/projects", {
         method: "POST",
         body: JSON.stringify({
           handshakeProjectId: projectId.trim(),
@@ -886,6 +939,12 @@ export default function DashboardPage() {
       setMaxAlertCount(1);
       setCooldownHours(1);
       setShowAddErrors(false);
+      if (typeof data.alertCredits === "number") {
+        setAlertCredits(data.alertCredits);
+      }
+      if (data.notice) {
+        setNotice(data.notice);
+      }
       await load();
       const name = data.project.displayName || "Untitled project";
       showToast(
@@ -902,18 +961,26 @@ export default function DashboardPage() {
 
   async function patch(id: string, body: Record<string, unknown>) {
     setError("");
-    const data = await api<{
-      project: Project;
-      effects?: {
-        maxAlertCount?: "updated" | "deferred" | "cooldown_started";
-        alertCooldownHours?: "updated" | "deferred";
-      };
-    }>(`/api/handshake/projects/${id}`, {
-      method: "PATCH",
-      body: JSON.stringify(body),
-    });
-    setProjects((prev) => prev.map((p) => (p.id === id ? data.project : p)));
-    return data;
+    try {
+      const data = await api<{
+        project: Project;
+        effects?: {
+          maxAlertCount?: "updated" | "deferred" | "cooldown_started";
+          alertCooldownHours?: "updated" | "deferred";
+        };
+      }>(`/api/handshake/projects/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(body),
+      });
+      setProjects((prev) => prev.map((p) => (p.id === id ? data.project : p)));
+      return data;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Update failed";
+      if (body.alertsEnabled === true && isOutOfCreditsError(message)) {
+        showOutOfCreditsModal(message);
+      }
+      throw err;
+    }
   }
 
   async function remove(id: string) {
@@ -967,9 +1034,15 @@ export default function DashboardPage() {
         })
       );
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Refresh failed");
+      const message = err instanceof Error ? err.message : "Refresh failed";
+      if (isOutOfCreditsError(message)) {
+        showOutOfCreditsModal(message);
+      } else {
+        setError(message);
+      }
     } finally {
       setRefreshingTasksId(null);
+      void loadCredits().catch(() => undefined);
     }
   }
 
@@ -1021,6 +1094,37 @@ export default function DashboardPage() {
 
       <div className="mx-auto max-w-5xl px-6 py-10">
       <AlertNumberBanner />
+
+      {alertCredits !== null ? (
+        <div
+          className={`mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border px-5 py-4 ${
+            alertCredits <= 0
+              ? "border-amber-200 bg-amber-50"
+              : "border-hs-line bg-white shadow-card"
+          }`}
+        >
+          <div>
+            <p className="text-sm font-semibold text-hs-ink">
+              {alertCredits} alert credit{alertCredits === 1 ? "" : "s"} left
+            </p>
+            <p className="mt-1 text-sm text-hs-muted">
+              {alertCredits <= 0
+                ? "Alerts won’t send until you buy more credits."
+                : "1 credit = 1 SMS when claimable tasks show up."}
+            </p>
+          </div>
+          <Link
+            href="/credits/"
+            className={
+              alertCredits <= 0
+                ? "btn-primary shrink-0"
+                : "shrink-0 rounded-full border border-hs-line bg-hs-bg px-4 py-2 text-sm font-semibold text-hs-ink transition hover:bg-white"
+            }
+          >
+            {alertCredits <= 0 ? "Buy credits" : "Get more"}
+          </Link>
+        </div>
+      ) : null}
 
       <form
         onSubmit={addProject}
@@ -1174,7 +1278,16 @@ export default function DashboardPage() {
                 try {
                   return await patch(id, body);
                 } catch (err) {
-                  setError(err instanceof Error ? err.message : "Update failed");
+                  const message =
+                    err instanceof Error ? err.message : "Update failed";
+                  if (
+                    !(
+                      body.alertsEnabled === true &&
+                      isOutOfCreditsError(message)
+                    )
+                  ) {
+                    setError(message);
+                  }
                   throw err;
                 }
               }}
@@ -1209,6 +1322,8 @@ export default function DashboardPage() {
         <MessageModal
           title={blocked.title}
           message={blocked.message}
+          actionHref={blocked.actionHref}
+          actionLabel={blocked.actionLabel}
           onClose={() => setBlocked(null)}
         />
       ) : null}

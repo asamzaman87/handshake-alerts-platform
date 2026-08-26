@@ -6,7 +6,7 @@ export function MarketingShell({
   active,
 }: {
   children: React.ReactNode;
-  active?: "home" | "how" | "faq" | "contact" | "dashboard" | "feedback";
+  active?: "home" | "how" | "faq" | "contact" | "dashboard" | "feedback" | "credits";
 }) {
   return (
     <div className="flex min-h-screen flex-col bg-hs-bg">
