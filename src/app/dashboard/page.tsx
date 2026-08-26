@@ -1160,34 +1160,33 @@ export default function DashboardPage() {
         </div>
       </section>
 
+      <div className="relative">
+        <a
+          href="#add-project"
+          className="fixed left-3 top-[42%] z-20 hidden w-14 -translate-y-1/2 flex-col items-center gap-2 text-center lg:left-5 lg:flex xl:left-8"
+          aria-label="Scroll to add a project"
+        >
+          <span className="text-[11px] font-semibold leading-snug tracking-wide text-hs-muted [writing-mode:vertical-rl] rotate-180">
+            Scroll to add a project
+          </span>
+          <span
+            aria-hidden="true"
+            className="animate-hs-bounce-y text-xl leading-none text-hs-ink"
+          >
+            ↓
+          </span>
+        </a>
+
       <div className="mx-auto max-w-5xl px-6 py-10">
       <div className="space-y-4">
         <CreditsBanner credits={alertCredits} />
         <AlertNumberBanner />
       </div>
 
-      <div className="mt-6 flex flex-col items-center gap-2 text-center">
-        <p className="text-sm font-medium text-hs-muted">
-          Scroll down to add a Handshake project
-        </p>
-        <a
-          href="#add-project"
-          className="inline-flex flex-col items-center gap-1 rounded-full px-3 py-2 text-hs-ink transition hover:text-hs-muted"
-          aria-label="Scroll to add a project"
-        >
-          <span
-            aria-hidden="true"
-            className="animate-hs-bounce-y text-2xl leading-none"
-          >
-            ↓
-          </span>
-        </a>
-      </div>
-
       <form
         id="add-project"
         onSubmit={addProject}
-        className="mt-6 scroll-mt-24 overflow-hidden rounded-2xl border border-hs-line bg-white shadow-card"
+        className="mt-8 scroll-mt-24 overflow-hidden rounded-2xl border border-hs-line bg-white shadow-card"
       >
         <div className="border-b border-hs-line bg-hs-bg px-6 py-4">
           <h2 className="text-lg font-semibold text-hs-ink">Add a project</h2>
@@ -1391,6 +1390,7 @@ export default function DashboardPage() {
         />
       ) : null}
       <ToastStack toasts={toasts} onDismiss={dismissToast} />
+      </div>
       </div>
     </main>
   );
