@@ -15,6 +15,10 @@ export const metadata: Metadata = {
   },
   description:
     "Get SMS alerts when Handshake AI projects you follow have claimable tasks.",
+  icons: {
+    icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
+    apple: [{ url: "/apple-icon.svg", type: "image/svg+xml" }],
+  },
 };
 
 export default function RootLayout({
