@@ -6,6 +6,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AlertNumberBanner } from "@/components/AlertNumberBanner";
 import { CreditsBanner } from "@/components/CreditsBanner";
+import {
+  WelcomeCreditsModal,
+  hasSeenWelcome,
+} from "@/components/WelcomeCreditsModal";
 import { ToastStack, type ToastItem } from "@/components/ToastStack";
 import {
   api,
@@ -801,6 +805,7 @@ export default function DashboardPage() {
     actionLabel?: string;
   } | null>(null);
   const [toasts, setToasts] = useState<ToastItem[]>([]);
+  const [showWelcome, setShowWelcome] = useState(false);
 
   function showToast(message: string) {
     const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -897,6 +902,11 @@ export default function DashboardPage() {
       .finally(() => setReady(true));
     // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only dashboard bootstrap
   }, [router]);
+
+  useEffect(() => {
+    if (!ready) return;
+    if (!hasSeenWelcome()) setShowWelcome(true);
+  }, [ready]);
 
   useEffect(() => {
     const next = projects
@@ -1101,10 +1111,7 @@ export default function DashboardPage() {
       </section>
 
       <div className="mx-auto max-w-5xl px-6 py-10">
-      <div className="space-y-4">
-        <CreditsBanner credits={alertCredits} />
-        <AlertNumberBanner />
-      </div>
+      <AlertNumberBanner />
 
       <form
         onSubmit={addProject}
@@ -1233,71 +1240,81 @@ export default function DashboardPage() {
         </p>
       )}
 
-      {projects.length === 0 ? (
-        <div className="mt-10 rounded-2xl border border-dashed border-hs-line bg-white px-6 py-14 text-center">
-          <p className="text-lg font-semibold text-hs-ink">No projects yet</p>
-          <p className="mt-2 text-sm text-hs-muted">
-            Add a Handshake project ID above to start receiving alerts.
-          </p>
-        </div>
-      ) : (
-        <div className="mt-10 space-y-4">
-          <h2 className="text-xl font-semibold text-hs-ink">Your projects</h2>
-          {TEST_MODE ? (
-            <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-center text-sm font-semibold text-red-700">
-              Test mode on
+      <div className="mt-10 space-y-4">
+        <CreditsBanner credits={alertCredits} />
+        {projects.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-hs-line bg-white px-6 py-14 text-center">
+            <p className="text-lg font-semibold text-hs-ink">No projects yet</p>
+            <p className="mt-2 text-sm text-hs-muted">
+              Add a Handshake project ID above to start receiving alerts.
             </p>
-          ) : null}
-          <ul className="space-y-4">
-          {projects.map((project) => (
-            <ProjectCard
-              key={project.id}
-              project={project}
-              refreshingTasks={refreshingTasksId === project.id}
-              onPatch={async (id, body) => {
-                try {
-                  return await patch(id, body);
-                } catch (err) {
-                  const message =
-                    err instanceof Error ? err.message : "Update failed";
-                  if (
-                    !(
-                      body.alertsEnabled === true &&
-                      isOutOfCreditsError(message)
-                    )
-                  ) {
-                    setError(message);
-                  }
-                  throw err;
-                }
-              }}
-              onRemove={async (id) => {
-                try {
-                  await remove(id);
-                } catch (err) {
-                  setError(err instanceof Error ? err.message : "Delete failed");
-                  throw err;
-                }
-              }}
-              onRefreshTasks={refreshTasks}
-              onRefreshStatus={refreshStatus}
-              onBlocked={setBlocked}
-              onResetCooldown={async (id) => {
-                try {
-                  await patch(id, { resetCooldown: true });
-                } catch (err) {
-                  setError(
-                    err instanceof Error ? err.message : "Failed to reset cooldown"
-                  );
-                  throw err;
-                }
-              }}
-              onToast={showToast}
-            />
-          ))}
-          </ul>
-        </div>
-      )}
+          </div>
+        ) : (
+          <>
+            <h2 className="text-xl font-semibold text-hs-ink">Your projects</h2>
+            {TEST_MODE ? (
+              <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-center text-sm font-semibold text-red-700">
+                Test mode on
+              </p>
+            ) : null}
+            <ul className="space-y-4">
+              {projects.map((project) => (
+                <ProjectCard
+                  key={project.id}
+                  project={project}
+                  refreshingTasks={refreshingTasksId === project.id}
+                  onPatch={async (id, body) => {
+                    try {
+                      return await patch(id, body);
+                    } catch (err) {
+                      const message =
+                        err instanceof Error ? err.message : "Update failed";
+                      if (
+                        !(
+                          body.alertsEnabled === true &&
+                          isOutOfCreditsError(message)
+                        )
+                      ) {
+                        setError(message);
+                      }
+                      throw err;
+                    }
+                  }}
+                  onRemove={async (id) => {
+                    try {
+                      await remove(id);
+                    } catch (err) {
+                      setError(
+                        err instanceof Error ? err.message : "Delete failed"
+                      );
+                      throw err;
+                    }
+                  }}
+                  onRefreshTasks={refreshTasks}
+                  onRefreshStatus={refreshStatus}
+                  onBlocked={setBlocked}
+                  onResetCooldown={async (id) => {
+                    try {
+                      await patch(id, { resetCooldown: true });
+                    } catch (err) {
+                      setError(
+                        err instanceof Error
+                          ? err.message
+                          : "Failed to reset cooldown"
+                      );
+                      throw err;
+                    }
+                  }}
+                  onToast={showToast}
+                />
+              ))}
+            </ul>
+          </>
+        )}
+      </div>
+      {showWelcome ? (
+        <WelcomeCreditsModal onClose={() => setShowWelcome(false)} />
+      ) : null}
       {blocked ? (
         <MessageModal
           title={blocked.title}
