@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AlertNumberBanner } from "@/components/AlertNumberBanner";
+import { CreditsBanner } from "@/components/CreditsBanner";
 import { ToastStack, type ToastItem } from "@/components/ToastStack";
 import {
   api,
@@ -13,6 +14,9 @@ import {
   type Project,
 } from "@/lib/api";
 import { TEST_MODE, TEST_MODE_TASK_COUNT } from "@/lib/constants";
+
+const DEFAULT_MAX_ALERT_COUNT = 3;
+const DEFAULT_COOLDOWN_HOURS = 1;
 
 const HINTS = {
   projectId:
@@ -776,8 +780,12 @@ export default function DashboardPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [alertCredits, setAlertCredits] = useState<number | null>(null);
   const [projectId, setProjectId] = useState("");
-  const [maxAlertCount, setMaxAlertCount] = useState<number | "">(1);
-  const [cooldownHours, setCooldownHours] = useState<number | "">(1);
+  const [maxAlertCount, setMaxAlertCount] = useState<number | "">(
+    DEFAULT_MAX_ALERT_COUNT
+  );
+  const [cooldownHours, setCooldownHours] = useState<number | "">(
+    DEFAULT_COOLDOWN_HOURS
+  );
   const [showAddErrors, setShowAddErrors] = useState(false);
   const [error, setError] = useState("");
   const [addError, setAddError] = useState("");
@@ -936,8 +944,8 @@ export default function DashboardPage() {
         }),
       });
       setProjectId("");
-      setMaxAlertCount(1);
-      setCooldownHours(1);
+      setMaxAlertCount(DEFAULT_MAX_ALERT_COUNT);
+      setCooldownHours(DEFAULT_COOLDOWN_HOURS);
       setShowAddErrors(false);
       if (typeof data.alertCredits === "number") {
         setAlertCredits(data.alertCredits);
@@ -1093,38 +1101,10 @@ export default function DashboardPage() {
       </section>
 
       <div className="mx-auto max-w-5xl px-6 py-10">
-      <AlertNumberBanner />
-
-      {alertCredits !== null ? (
-        <div
-          className={`mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border px-5 py-4 ${
-            alertCredits <= 0
-              ? "border-amber-200 bg-amber-50"
-              : "border-hs-line bg-white shadow-card"
-          }`}
-        >
-          <div>
-            <p className="text-sm font-semibold text-hs-ink">
-              {alertCredits} alert credit{alertCredits === 1 ? "" : "s"} left
-            </p>
-            <p className="mt-1 text-sm text-hs-muted">
-              {alertCredits <= 0
-                ? "Alerts won’t send until you buy more credits."
-                : "1 credit = 1 SMS when claimable tasks show up."}
-            </p>
-          </div>
-          <Link
-            href="/credits/"
-            className={
-              alertCredits <= 0
-                ? "btn-primary shrink-0"
-                : "shrink-0 rounded-full border border-hs-line bg-hs-bg px-4 py-2 text-sm font-semibold text-hs-ink transition hover:bg-white"
-            }
-          >
-            {alertCredits <= 0 ? "Buy credits" : "Get more"}
-          </Link>
-        </div>
-      ) : null}
+      <div className="space-y-4">
+        <CreditsBanner credits={alertCredits} />
+        <AlertNumberBanner />
+      </div>
 
       <form
         onSubmit={addProject}
