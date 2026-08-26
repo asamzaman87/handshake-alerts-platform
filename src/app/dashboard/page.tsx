@@ -1138,25 +1138,56 @@ export default function DashboardPage() {
             Add projects, turn alerts on or off, and control how often we text
             you when claimable tasks show up.
           </p>
-          {projects.length > 0 ? (
-            <div className="mt-6 flex flex-wrap gap-3">
-              <span className="rounded-full border border-hs-line bg-hs-bg px-4 py-2 text-sm font-medium text-hs-ink">
-                {projects.length} project{projects.length === 1 ? "" : "s"}
+          <div className="mt-6 flex flex-wrap gap-3">
+            <span className="rounded-full border border-hs-line bg-hs-bg px-4 py-2 text-sm font-medium text-hs-ink">
+              {projects.length} project{projects.length === 1 ? "" : "s"}
+            </span>
+            <span className="rounded-full border border-hs-line bg-hs-bg px-4 py-2 text-sm font-medium text-hs-ink">
+              {alertsOn} alert{alertsOn === 1 ? "" : "s"} on
+            </span>
+            {alertCredits !== null ? (
+              <span
+                className={`rounded-full border px-4 py-2 text-sm font-medium tabular-nums ${
+                  outOfCredits
+                    ? "border-red-300 bg-red-50 text-red-700"
+                    : "border-hs-line bg-hs-bg text-hs-ink"
+                }`}
+              >
+                {alertCredits} credit{alertCredits === 1 ? "" : "s"} left
               </span>
-              <span className="rounded-full border border-hs-line bg-hs-bg px-4 py-2 text-sm font-medium text-hs-ink">
-                {alertsOn} alert{alertsOn === 1 ? "" : "s"} on
-              </span>
-            </div>
-          ) : null}
+            ) : null}
+          </div>
         </div>
       </section>
 
       <div className="mx-auto max-w-5xl px-6 py-10">
-      <AlertNumberBanner />
+      <div className="space-y-4">
+        <CreditsBanner credits={alertCredits} />
+        <AlertNumberBanner />
+      </div>
+
+      <div className="mt-6 flex flex-col items-center gap-2 text-center">
+        <p className="text-sm font-medium text-hs-muted">
+          Scroll down to add a Handshake project
+        </p>
+        <a
+          href="#add-project"
+          className="inline-flex flex-col items-center gap-1 rounded-full px-3 py-2 text-hs-ink transition hover:text-hs-muted"
+          aria-label="Scroll to add a project"
+        >
+          <span
+            aria-hidden="true"
+            className="animate-hs-bounce-y text-2xl leading-none"
+          >
+            ↓
+          </span>
+        </a>
+      </div>
 
       <form
+        id="add-project"
         onSubmit={addProject}
-        className="mt-8 overflow-hidden rounded-2xl border border-hs-line bg-white shadow-card"
+        className="mt-6 scroll-mt-24 overflow-hidden rounded-2xl border border-hs-line bg-white shadow-card"
       >
         <div className="border-b border-hs-line bg-hs-bg px-6 py-4">
           <h2 className="text-lg font-semibold text-hs-ink">Add a project</h2>
@@ -1282,7 +1313,6 @@ export default function DashboardPage() {
       )}
 
       <div className="mt-10 space-y-4">
-        <CreditsBanner credits={alertCredits} />
         {projects.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-hs-line bg-white px-6 py-14 text-center">
             <p className="text-lg font-semibold text-hs-ink">No projects yet</p>

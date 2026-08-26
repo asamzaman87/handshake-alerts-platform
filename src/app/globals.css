@@ -34,3 +34,19 @@ body {
     @apply mt-3 text-lg leading-relaxed text-hs-muted;
   }
 }
+
+@keyframes hs-bounce-y {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(6px);
+  }
+}
+
+@layer utilities {
+  .animate-hs-bounce-y {
+    animation: hs-bounce-y 1.4s ease-in-out infinite;
+  }
+}
