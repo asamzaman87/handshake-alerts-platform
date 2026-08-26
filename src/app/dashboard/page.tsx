@@ -6,9 +6,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AlertNumberBanner } from "@/components/AlertNumberBanner";
 import { CreditsBanner } from "@/components/CreditsBanner";
-import {
-  WelcomeCreditsModal,
-} from "@/components/WelcomeCreditsModal";
+import { WelcomeCreditsModal } from "@/components/WelcomeCreditsModal";
+import { ZeroCreditsLockModal } from "@/components/ZeroCreditsLockModal";
 import { ToastStack, type ToastItem } from "@/components/ToastStack";
 import {
   api,
@@ -940,6 +939,23 @@ export default function DashboardPage() {
   }, [router]);
 
   useEffect(() => {
+    if (!ready) return;
+    const refresh = () => {
+      void loadCredits().catch(() => undefined);
+    };
+    const onVisible = () => {
+      if (document.visibilityState === "visible") refresh();
+    };
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reload balance when returning from checkout
+  }, [ready]);
+
+  useEffect(() => {
     const next = projects
       .map((p) => p.alertsCooldownUntil)
       .filter((value): value is string => Boolean(value))
@@ -1094,6 +1110,8 @@ export default function DashboardPage() {
     setProjects(data.projects);
     return data.projects.find((project) => project.id === id) ?? null;
   }
+
+  const outOfCredits = alertCredits !== null && alertCredits <= 0;
 
   if (!ready) {
     return (
@@ -1286,9 +1304,7 @@ export default function DashboardPage() {
                   key={project.id}
                   project={project}
                   refreshingTasks={refreshingTasksId === project.id}
-                  creditsLocked={
-                    alertCredits !== null && alertCredits <= 0
-                  }
+                  creditsLocked={outOfCredits}
                   onPatch={async (id, body) => {
                     try {
                       return await patch(id, body);
@@ -1331,7 +1347,8 @@ export default function DashboardPage() {
           </>
         )}
       </div>
-      {showWelcome ? (
+      {outOfCredits ? <ZeroCreditsLockModal /> : null}
+      {!outOfCredits && showWelcome ? (
         <WelcomeCreditsModal onClose={() => setShowWelcome(false)} />
       ) : null}
       {blocked ? (
