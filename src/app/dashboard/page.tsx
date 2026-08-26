@@ -1157,26 +1157,31 @@ export default function DashboardPage() {
               </span>
             ) : null}
           </div>
-
-          <a
-            href="#add-project"
-            className="mt-8 inline-flex items-center gap-3 rounded-2xl border border-hs-line bg-hs-bg px-5 py-3 text-hs-ink transition hover:border-hs-ink hover:bg-white"
-            aria-label="Scroll to add a project"
-          >
-            <span className="text-base font-semibold tracking-tight md:text-lg">
-              Scroll down to add a project
-            </span>
-            <span
-              aria-hidden="true"
-              className="animate-hs-bounce-y text-2xl font-semibold leading-none md:text-3xl"
-            >
-              ↓
-            </span>
-          </a>
         </div>
       </section>
 
       <div className="relative">
+        {/* Left-gutter scroll cue: centered in side margin, near bottom of viewport (lg+ only). */}
+        <a
+          href="#add-project"
+          className="pointer-events-none fixed z-20 hidden w-max max-w-[11rem] -translate-x-1/2 flex-col items-center gap-2 text-center lg:pointer-events-auto lg:flex"
+          style={{
+            left: "max(3.5rem, calc((100vw - 64rem) / 4))",
+            bottom: "12vh",
+          }}
+          aria-label="Scroll to add a project"
+        >
+          <span className="text-sm font-semibold leading-snug tracking-tight text-hs-ink md:text-base">
+            Scroll down to add a project
+          </span>
+          <span
+            aria-hidden="true"
+            className="animate-hs-bounce-y text-3xl font-semibold leading-none text-hs-ink"
+          >
+            ↓
+          </span>
+        </a>
+
       <div className="mx-auto max-w-5xl px-6 py-10">
       <div className="space-y-4">
         <CreditsBanner credits={alertCredits} />
