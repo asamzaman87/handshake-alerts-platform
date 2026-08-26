@@ -1164,7 +1164,8 @@ export default function DashboardPage() {
         <div className="border-b border-hs-line bg-hs-bg px-6 py-4">
           <h2 className="text-lg font-semibold text-hs-ink">Add a project</h2>
           <p className="mt-1 text-sm text-hs-muted">
-            Paste a Handshake project UUID and choose your alert settings.
+            Scroll down to paste a Handshake project UUID and choose your alert
+            settings.
           </p>
         </div>
         <div className="p-6">
