@@ -671,34 +671,51 @@ export default function DashboardPage() {
               return {
                 ...project,
                 lastAvailableCount: data.project.lastAvailableCount,
-                lastPolledAt: data.project.lastPolledAt,
+                lastPolledAt:
+                  data.project.lastPolledAt ??
+                  data.lastPolledAt ??
+                  lastPolledAt,
                 remainingAlerts: data.project.remainingAlerts,
                 alertsSentCount: data.project.alertsSentCount,
                 onCooldown: data.project.onCooldown,
                 alertsCooldownUntil: data.project.alertsCooldownUntil,
               };
             }
-            if (!project.alertsEnabled || project.onCooldown || project.remainingAlerts <= 0) {
+            // Still update the check UI even if alerts are off.
+            if (!project.alertsEnabled) {
               return {
                 ...project,
                 lastAvailableCount: TEST_MODE_TASK_COUNT,
                 lastPolledAt,
               };
             }
-            const nextRemaining = Math.max(0, project.remainingAlerts - 1);
+            // Frontend test mode: refresh can break cooldown to simulate an alert.
+            const effectiveRemaining = project.onCooldown
+              ? project.maxAlertCount
+              : project.remainingAlerts;
+            if (effectiveRemaining <= 0) {
+              return {
+                ...project,
+                lastAvailableCount: TEST_MODE_TASK_COUNT,
+                lastPolledAt,
+              };
+            }
+            const nextRemaining = Math.max(0, effectiveRemaining - 1);
             const hitCap = nextRemaining === 0;
             return {
               ...project,
               lastAvailableCount: TEST_MODE_TASK_COUNT,
               lastPolledAt,
               remainingAlerts: nextRemaining,
-              alertsSentCount: project.alertsSentCount + 1,
+              alertsSentCount: hitCap
+                ? project.maxAlertCount
+                : project.maxAlertCount - nextRemaining,
               onCooldown: hitCap,
               alertsCooldownUntil: hitCap
                 ? new Date(
                     Date.now() + (project.alertCooldownHours ?? 3) * 60 * 60 * 1000
                   ).toISOString()
-                : project.alertsCooldownUntil,
+                : null,
             };
           }
           if (data.project) {
