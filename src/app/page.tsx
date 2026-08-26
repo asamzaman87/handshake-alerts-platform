@@ -1,11 +1,29 @@
-"use client";
-
-import { useEffect, useState } from "react";
+import type { Metadata } from "next";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { MarketingShell } from "@/components/MarketingShell";
 import { ProductPreview } from "@/components/ProductPreview";
-import { getToken } from "@/lib/api";
+import { SignedInRedirect } from "@/components/SignedInRedirect";
+import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/site";
+
+export const metadata: Metadata = {
+  title: SITE_NAME,
+  description: SITE_DESCRIPTION,
+  alternates: {
+    canonical: SITE_URL,
+  },
+  openGraph: {
+    title: SITE_NAME,
+    description: SITE_DESCRIPTION,
+    url: SITE_URL,
+    siteName: SITE_NAME,
+    type: "website",
+  },
+  twitter: {
+    card: "summary",
+    title: SITE_NAME,
+    description: SITE_DESCRIPTION,
+  },
+};
 
 const STEPS = [
   {
@@ -23,27 +41,9 @@ const STEPS = [
 ];
 
 export default function HomePage() {
-  const router = useRouter();
-  const [show, setShow] = useState(false);
-
-  useEffect(() => {
-    if (getToken()) {
-      router.replace("/dashboard/");
-      return;
-    }
-    setShow(true);
-  }, [router]);
-
-  if (!show) {
-    return (
-      <main className="flex min-h-screen items-center justify-center text-sm text-hs-muted">
-        Loading…
-      </main>
-    );
-  }
-
   return (
     <MarketingShell active="home">
+      <SignedInRedirect />
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(211,251,82,0.18),_transparent_45%),radial-gradient(circle_at_bottom_left,_rgba(122,243,255,0.12),_transparent_40%)]" />
         <div className="relative mx-auto grid max-w-6xl gap-12 px-6 py-16 md:grid-cols-2 md:items-center md:py-24">
@@ -55,9 +55,8 @@ export default function HomePage() {
               Get a text when Handshake tasks show up.
             </h1>
             <p className="mt-5 text-lg leading-relaxed text-hs-muted">
-              A notification service for Handshake AI fellows. Add the projects
-              you care about, turn alerts on, and we text you when claimable
-              tasks are waiting — on your schedule, with limits you control.
+              {SITE_DESCRIPTION} Turn alerts on per project, set limits you
+              control, and get notified when claimable tasks are waiting.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Link href="/sign-in/" className="btn-accent">
