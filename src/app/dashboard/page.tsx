@@ -23,6 +23,10 @@ const HINTS = {
     "How many texts we can still send for this project before we pause. This drops as we text you, and it cannot go above Max alerts.",
 };
 
+function isProjectIdAddError(message: string) {
+  return /project|uuid|already added|inaccessible|invalid/i.test(message);
+}
+
 const TOOLTIP_WIDTH = 224; // w-56
 const TOOLTIP_GAP = 8;
 const VIEWPORT_PAD = 12;
@@ -750,6 +754,7 @@ export default function DashboardPage() {
   const [error, setError] = useState("");
   const [addError, setAddError] = useState("");
   const [notice, setNotice] = useState("");
+  const addErrorRef = useRef<HTMLParagraphElement>(null);
   const [busy, setBusy] = useState(false);
   const [refreshingTasksId, setRefreshingTasksId] = useState<string | null>(null);
   const [blocked, setBlocked] = useState<{ title: string; message: string } | null>(null);
@@ -790,6 +795,11 @@ export default function DashboardPage() {
     return () => window.clearTimeout(id);
   }, [projects]);
 
+  useEffect(() => {
+    if (!addError) return;
+    addErrorRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [addError]);
+
   async function addProject(e: FormEvent) {
     e.preventDefault();
     setError("");
@@ -818,7 +828,9 @@ export default function DashboardPage() {
       setShowAddErrors(false);
       await load();
     } catch (err) {
-      setAddError(err instanceof Error ? err.message : "Failed to add project");
+      const message =
+        err instanceof Error ? err.message : "Failed to add project";
+      setAddError(message);
     } finally {
       setBusy(false);
     }
@@ -971,7 +983,10 @@ export default function DashboardPage() {
           />
         </div>
         {addError ? (
-          <p className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <p
+            ref={addErrorRef}
+            className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+          >
             {addError}
           </p>
         ) : null}
@@ -979,7 +994,10 @@ export default function DashboardPage() {
           <OutlinedField
             label="Project ID"
             hint={HINTS.projectId}
-            invalid={showAddErrors && !projectId.trim()}
+            invalid={
+              (showAddErrors && !projectId.trim()) ||
+              Boolean(addError && isProjectIdAddError(addError))
+            }
           >
             <input
               className="w-full bg-transparent py-1.5 font-mono text-sm outline-none"
