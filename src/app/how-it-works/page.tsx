@@ -34,17 +34,17 @@ export default function HowItWorksPage() {
               <h2 className="mt-2 text-xl font-semibold">Add project IDs</h2>
               <p className="mt-2 text-sm leading-relaxed text-hs-muted">
                 Paste Handshake AI project UUIDs into your dashboard. Each
-                project has its own alert settings: on/off, max alerts, and
-                cooldown hours.
+                project has its own alert settings: on/off and how often we
+                check for claimable tasks.
               </p>
             </li>
             <li className="rounded-2xl border border-hs-line bg-white p-6">
               <p className="text-sm font-semibold text-[#86C91A]">Step 3</p>
               <h2 className="mt-2 text-xl font-semibold">Receive task alerts</h2>
               <p className="mt-2 text-sm leading-relaxed text-hs-muted">
-                About every 10 minutes we check each enabled project. If more
-                than two claimable tasks are waiting, we text you. After you hit
-                your max alerts, we pause until the cooldown you set expires.
+                We check each enabled project on the interval you set. If more
+                than two claimable tasks are waiting and you have alert credits,
+                we text you.
               </p>
             </li>
           </ol>

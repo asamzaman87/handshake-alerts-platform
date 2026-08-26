@@ -16,11 +16,11 @@ const FAQ = [
   },
   {
     q: "How often do you check for tasks?",
-    a: "About every 10 minutes for each project you have enabled.",
+    a: "On the interval you choose per project (for example about every 10, 20, or 30 minutes).",
   },
   {
     q: "When will I get a text?",
-    a: "When we find more than two claimable tasks on a project where alerts are on and you still have alerts remaining before your cooldown.",
+    a: "When we find more than two claimable tasks on a project where alerts are on and you still have alert credits.",
   },
   {
     q: "How do I stop texts?",

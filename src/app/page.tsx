@@ -126,8 +126,8 @@ export default function HomePage() {
               A dashboard to manage alerts per project.
             </p>
             <p className="mt-3 text-sm leading-relaxed text-white/70">
-              Toggle alerts on or off, refresh task counts, set max alerts and
-              cooldown hours, and delete projects you no longer need.
+              Toggle alerts on or off, refresh task counts, choose how often we
+              check each project, and delete ones you no longer need.
             </p>
             <Link
               href="/sign-in/"

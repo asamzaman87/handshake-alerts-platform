@@ -11,24 +11,21 @@ import { ZeroCreditsLockModal } from "@/components/ZeroCreditsLockModal";
 import { ToastStack, type ToastItem } from "@/components/ToastStack";
 import {
   api,
+  CHECK_INTERVAL_OPTIONS,
   clearToken,
+  formatCheckInterval,
   getToken,
   type Project,
 } from "@/lib/api";
 import { TEST_MODE, TEST_MODE_TASK_COUNT } from "@/lib/constants";
 
-const DEFAULT_MAX_ALERT_COUNT = 3;
-const DEFAULT_COOLDOWN_HOURS = 1;
+const DEFAULT_CHECK_INTERVAL = 10;
 
 const HINTS = {
   projectId:
     "The Handshake project UUID from the project page. The video above shows where to copy it.",
-  maxAlerts:
-    "How many texts we will send for this project when tasks show up, before the cooldown timer begins. You can raise or lower this anytime. We send at most one text every 10 minutes.",
-  cooldownHours:
-    "After we hit total alerts before cooldown, we stop texting for this project for this many hours. Then the count resets and we start again. Changing this during a cooldown applies to the next cooldown.",
-  remaining:
-    "How many texts we can still send for this project before the cooldown timer begins. This drops as we text you, and it cannot go above total alerts before cooldown.",
+  checkInterval:
+    "How often we look for claimable tasks on this project. Times are approximate — usually within a few minutes of your choice.",
 };
 
 function isProjectIdAddError(message: string) {
@@ -340,25 +337,10 @@ function ConfirmModal({
   );
 }
 
-function clampInt(raw: string, min: number, max: number): number {
-  const n = Number(raw);
-  if (!Number.isFinite(n)) return min;
-  return Math.min(max, Math.max(min, Math.round(n)));
-}
-
 function tasksFoundLabel(count: number) {
   if (count === 0) return "no tasks found";
   if (count === 1) return "1 task found";
   return `${count} tasks found`;
-}
-
-function cooldownRemainingLabel(iso: string, nowMs = Date.now()) {
-  const ms = Math.max(0, new Date(iso).getTime() - nowMs);
-  const totalSecs = Math.floor(ms / 1000);
-  const hours = Math.floor(totalSecs / 3600);
-  const mins = Math.floor((totalSecs % 3600) / 60);
-  const secs = totalSecs % 60;
-  return `${hours}:${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
 }
 
 function RefreshIcon({ spinning }: { spinning?: boolean }) {
@@ -410,7 +392,6 @@ function ProjectCard({
   onRefreshTasks,
   onRefreshStatus,
   onBlocked,
-  onResetCooldown,
   onToast,
 }: {
   project: Project;
@@ -419,13 +400,7 @@ function ProjectCard({
   onPatch: (
     id: string,
     body: Record<string, unknown>
-  ) => Promise<{
-    project: Project;
-    effects?: {
-      maxAlertCount?: "updated" | "deferred" | "cooldown_started";
-      alertCooldownHours?: "updated" | "deferred";
-    };
-  }>;
+  ) => Promise<{ project: Project }>;
   onRemove: (id: string) => Promise<void>;
   onRefreshTasks: (id: string) => void;
   onRefreshStatus: (id: string) => Promise<Project | null>;
@@ -435,47 +410,22 @@ function ProjectCard({
     actionHref?: string;
     actionLabel?: string;
   }) => void;
-  onResetCooldown: (id: string) => Promise<void>;
   onToast: (message: string) => void;
 }) {
-  const savedCooldown = project.alertCooldownHours ?? 3;
-  const [draftMax, setDraftMax] = useState(project.maxAlertCount);
-  const [draftCooldown, setDraftCooldown] = useState(savedCooldown);
+  const [draftInterval, setDraftInterval] = useState(
+    project.checkIntervalMinutes
+  );
   const [saving, setSaving] = useState(false);
-  const [resettingCooldown, setResettingCooldown] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [now, setNow] = useState(() => Date.now());
-  const expiredRefresh = useRef(false);
 
   useEffect(() => {
-    setDraftMax(project.maxAlertCount);
-    setDraftCooldown(project.alertCooldownHours ?? 3);
-  }, [project.maxAlertCount, project.alertCooldownHours]);
+    setDraftInterval(project.checkIntervalMinutes);
+  }, [project.checkIntervalMinutes]);
 
-  useEffect(() => {
-    if (!project.onCooldown || !project.alertsCooldownUntil) {
-      expiredRefresh.current = false;
-      return;
-    }
-    const id = window.setInterval(() => setNow(Date.now()), 1_000);
-    return () => window.clearInterval(id);
-  }, [project.onCooldown, project.alertsCooldownUntil]);
-
-  useEffect(() => {
-    if (!project.onCooldown || !project.alertsCooldownUntil) return;
-    if (new Date(project.alertsCooldownUntil).getTime() > now) return;
-    if (expiredRefresh.current) return;
-    expiredRefresh.current = true;
-    void onRefreshStatus(project.id).catch(() => undefined);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- parent passes a new callback each render
-  }, [now, project.id, project.onCooldown, project.alertsCooldownUntil]);
-
-  const dirty =
-    draftMax !== project.maxAlertCount || draftCooldown !== savedCooldown;
+  const dirty = draftInterval !== project.checkIntervalMinutes;
 
   function cancelEdits() {
-    setDraftMax(project.maxAlertCount);
-    setDraftCooldown(savedCooldown);
+    setDraftInterval(project.checkIntervalMinutes);
   }
 
   async function saveEdits() {
@@ -483,7 +433,6 @@ function ProjectCard({
 
     setSaving(true);
     try {
-      // Sync latest server state before applying settings changes.
       let fresh: Project | null;
       try {
         fresh = await onRefreshStatus(project.id);
@@ -506,49 +455,13 @@ function ProjectCard({
         return;
       }
 
-      const body: Record<string, unknown> = {};
-      if (draftMax !== fresh.maxAlertCount) body.maxAlertCount = draftMax;
-      if (draftCooldown !== (fresh.alertCooldownHours ?? 3)) {
-        body.alertCooldownHours = draftCooldown;
-      }
-      if (Object.keys(body).length === 0) {
-        setDraftMax(fresh.maxAlertCount);
-        setDraftCooldown(fresh.alertCooldownHours ?? 3);
+      if (draftInterval === fresh.checkIntervalMinutes) {
+        setDraftInterval(fresh.checkIntervalMinutes);
         return;
       }
 
-      const result = await onPatch(project.id, body);
-      const effects = result.effects ?? {};
-      const maxEffect = effects.maxAlertCount;
-      const coolEffect = effects.alertCooldownHours;
+      await onPatch(project.id, { checkIntervalMinutes: draftInterval });
       const name = project.displayName || "Untitled project";
-
-      if (maxEffect === "cooldown_started") {
-        onBlocked({
-          title: "Total alerts before cooldown saved",
-          message:
-            "This round is used up under the new limit, so a cooldown has started. After it ends, the next round will use your new total alerts before cooldown.",
-        });
-      } else if (maxEffect === "deferred" && coolEffect === "deferred") {
-        onBlocked({
-          title: "Settings saved",
-          message:
-            "Your new total alerts before cooldown and cooldown hours will take effect after the current cooldown finishes. The cooldown timer is not reset.",
-        });
-      } else if (maxEffect === "deferred") {
-        onBlocked({
-          title: "Total alerts before cooldown saved",
-          message:
-            "This new limit will take effect after the current cooldown finishes. The cooldown timer is not reset.",
-        });
-      } else if (coolEffect === "deferred") {
-        onBlocked({
-          title: "Cooldown hours saved",
-          message:
-            "This new cooldown will take effect the next time this project cools down. The current cooldown is not affected.",
-        });
-      }
-
       onToast(`Saved changes for ${name}.`);
     } catch {
       // Parent onPatch already surfaces the error.
@@ -631,109 +544,28 @@ function ProjectCard({
           </div>
         </div>
 
-        {(project.onCooldown && project.alertsCooldownUntil) ||
-        (project.remainingAlerts === 0 && project.alertsCooldownUntil) ? (
-          <div className="relative">
-            <div
-              className={`flex flex-wrap items-center justify-between gap-3 rounded-xl bg-amber-50 px-4 py-3 ${
-                interactionLocked ? "opacity-40" : ""
-              }`}
+        <div className="relative">
+          <div className={interactionLocked ? "opacity-40" : ""}>
+            <OutlinedField
+              label="Check about every"
+              hint={HINTS.checkInterval}
+              muted={interactionLocked}
             >
-              <p className="text-sm text-amber-900">
-                Cooldown time remaining:{" "}
-                <span className="tabular-nums font-semibold">
-                  {cooldownRemainingLabel(project.alertsCooldownUntil, now)}
-                </span>
-                . We will start checking this project again then, with a fresh
-                alert count.
-              </p>
-              <button
-                type="button"
-                disabled={resettingCooldown || interactionLocked}
-                className="shrink-0 rounded-full border border-amber-700 px-4 py-2 text-sm font-semibold text-amber-900 transition hover:bg-amber-100/80 disabled:opacity-40"
-                onClick={async () => {
+              <select
+                disabled={interactionLocked}
+                className="w-full bg-transparent py-1.5 text-sm outline-none disabled:cursor-not-allowed"
+                value={draftInterval}
+                onChange={(e) => {
                   if (interactionLocked) return;
-                  setResettingCooldown(true);
-                  try {
-                    await onResetCooldown(project.id);
-                  } finally {
-                    setResettingCooldown(false);
-                  }
+                  setDraftInterval(Number(e.target.value));
                 }}
               >
-                {resettingCooldown ? "Resetting…" : "Reset cooldown"}
-              </button>
-            </div>
-            {!creditsLocked && alertsLocked ? (
-              <button
-                type="button"
-                className="absolute inset-0 z-10 cursor-pointer rounded-xl"
-                aria-label="Alerts are off"
-                onClick={() =>
-                  onBlocked({
-                    title: "Alerts are off",
-                    message:
-                      "Turn alerts on for this project to reset the cooldown or change settings.",
-                  })
-                }
-              />
-            ) : null}
-          </div>
-        ) : null}
-
-        <div className="relative">
-          <div
-            className={`grid gap-3 sm:grid-cols-3 ${
-              interactionLocked ? "opacity-40" : ""
-            }`}
-          >
-            <OutlinedField
-              label="Total alerts before cooldown"
-              hint={HINTS.maxAlerts}
-              muted={interactionLocked}
-            >
-              <input
-                type="number"
-                min={1}
-                max={12}
-                disabled={interactionLocked}
-                className="w-full bg-transparent py-1.5 text-sm outline-none disabled:cursor-not-allowed"
-                value={draftMax}
-                onChange={(e) => {
-                  if (interactionLocked) return;
-                  setDraftMax(clampInt(e.target.value, 1, 12));
-                }}
-              />
-            </OutlinedField>
-            <OutlinedField
-              label="Cooldown hours"
-              hint={HINTS.cooldownHours}
-              muted={interactionLocked}
-            >
-              <input
-                type="number"
-                min={1}
-                max={72}
-                disabled={interactionLocked}
-                className="w-full bg-transparent py-1.5 text-sm outline-none disabled:cursor-not-allowed"
-                value={draftCooldown}
-                onChange={(e) => {
-                  if (interactionLocked) return;
-                  setDraftCooldown(clampInt(e.target.value, 1, 72));
-                }}
-              />
-            </OutlinedField>
-            <OutlinedField
-              label="Alerts left before cooldown"
-              hint={HINTS.remaining}
-              muted
-            >
-              <input
-                readOnly
-                className="w-full cursor-default bg-transparent py-1.5 text-sm text-hs-muted outline-none"
-                value={project.remainingAlerts}
-                tabIndex={-1}
-              />
+                {CHECK_INTERVAL_OPTIONS.map((minutes) => (
+                  <option key={minutes} value={minutes}>
+                    {formatCheckInterval(minutes)}
+                  </option>
+                ))}
+              </select>
             </OutlinedField>
           </div>
           {!creditsLocked && alertsLocked ? (
@@ -745,7 +577,7 @@ function ProjectCard({
                 onBlocked({
                   title: "Alerts are off",
                   message:
-                    "Turn alerts on for this project if you want to change total alerts before cooldown, cooldown hours, or other settings.",
+                    "Turn alerts on for this project if you want to change how often we check.",
                 })
               }
             />
@@ -820,11 +652,8 @@ export default function DashboardPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [alertCredits, setAlertCredits] = useState<number | null>(null);
   const [projectId, setProjectId] = useState("");
-  const [maxAlertCount, setMaxAlertCount] = useState<number | "">(
-    DEFAULT_MAX_ALERT_COUNT
-  );
-  const [cooldownHours, setCooldownHours] = useState<number | "">(
-    DEFAULT_COOLDOWN_HOURS
+  const [checkIntervalMinutes, setCheckIntervalMinutes] = useState(
+    DEFAULT_CHECK_INTERVAL
   );
   const [showAddErrors, setShowAddErrors] = useState(false);
   const [error, setError] = useState("");
@@ -960,20 +789,6 @@ export default function DashboardPage() {
   }, [ready]);
 
   useEffect(() => {
-    const next = projects
-      .map((p) => p.alertsCooldownUntil)
-      .filter((value): value is string => Boolean(value))
-      .map((value) => new Date(value).getTime())
-      .filter((time) => time > Date.now())
-      .sort((a, b) => a - b)[0];
-    if (!next) return;
-    const id = window.setTimeout(() => {
-      load().catch(() => {});
-    }, next - Date.now() + 750);
-    return () => window.clearTimeout(id);
-  }, [projects]);
-
-  useEffect(() => {
     if (!addError) return;
     addErrorRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }, [addError]);
@@ -984,9 +799,7 @@ export default function DashboardPage() {
     setAddError("");
     setNotice("");
     const missingProjectId = !projectId.trim();
-    const missingMax = maxAlertCount === "";
-    const missingCooldown = cooldownHours === "";
-    if (missingProjectId || missingMax || missingCooldown) {
+    if (missingProjectId) {
       setShowAddErrors(true);
       return;
     }
@@ -1000,13 +813,11 @@ export default function DashboardPage() {
         method: "POST",
         body: JSON.stringify({
           handshakeProjectId: projectId.trim(),
-          maxAlertCount,
-          alertCooldownHours: cooldownHours,
+          checkIntervalMinutes,
         }),
       });
       setProjectId("");
-      setMaxAlertCount(DEFAULT_MAX_ALERT_COUNT);
-      setCooldownHours(DEFAULT_COOLDOWN_HOURS);
+      setCheckIntervalMinutes(DEFAULT_CHECK_INTERVAL);
       setShowAddErrors(false);
       if (typeof data.alertCredits === "number") {
         setAlertCredits(data.alertCredits);
@@ -1032,10 +843,6 @@ export default function DashboardPage() {
     setError("");
     const data = await api<{
       project: Project;
-      effects?: {
-        maxAlertCount?: "updated" | "deferred" | "cooldown_started";
-        alertCooldownHours?: "updated" | "deferred";
-      };
     }>(`/api/handshake/projects/${id}`, {
       method: "PATCH",
       body: JSON.stringify(body),
@@ -1067,8 +874,7 @@ export default function DashboardPage() {
             data.project?.lastPolledAt ??
             data.lastPolledAt ??
             new Date().toISOString();
-          // Always sync latest alert-round fields from the server. Refresh does
-          // not decrement alerts — it only reads current remaining/cooldown.
+          // Always sync latest fields from the server on refresh.
           if (data.project) {
             return {
               ...project,
@@ -1076,12 +882,7 @@ export default function DashboardPage() {
                 ? data.project.lastAvailableCount ?? TEST_MODE_TASK_COUNT
                 : data.project.lastAvailableCount,
               lastPolledAt,
-              maxAlertCount: data.project.maxAlertCount,
-              alertCooldownHours: data.project.alertCooldownHours,
-              remainingAlerts: data.project.remainingAlerts,
-              alertsSentCount: data.project.alertsSentCount,
-              onCooldown: data.project.onCooldown,
-              alertsCooldownUntil: data.project.alertsCooldownUntil,
+              checkIntervalMinutes: data.project.checkIntervalMinutes,
               lastAlertedAt: data.project.lastAlertedAt,
             };
           }
@@ -1140,8 +941,8 @@ export default function DashboardPage() {
               Manage Handshake project alerts
             </h1>
             <p className="mt-3 max-w-xl text-base leading-relaxed text-hs-muted">
-              Add projects, turn alerts on or off, and control how often we text
-              you when claimable tasks show up.
+              Add projects, turn alerts on or off, and choose how often we check
+              for claimable tasks.
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
               <span className="rounded-full border border-hs-line bg-hs-bg px-4 py-2 text-sm font-medium text-hs-ink">
@@ -1168,8 +969,8 @@ export default function DashboardPage() {
         <div className="border-b border-hs-line bg-hs-bg px-6 py-4">
           <h2 className="text-lg font-semibold text-hs-ink">Add a project</h2>
           <p className="mt-1 text-sm text-hs-muted">
-            Scroll down to paste a Handshake project UUID and choose your alert
-            settings.
+            Scroll down to paste a Handshake project UUID and choose how often
+            we check for claimable tasks.
           </p>
         </div>
         <div className="p-6">
@@ -1212,54 +1013,29 @@ export default function DashboardPage() {
               }}
             />
           </OutlinedField>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <OutlinedField
-              label="Total alerts before cooldown"
-              hint={HINTS.maxAlerts}
-              invalid={showAddErrors && maxAlertCount === ""}
+          <OutlinedField
+            label="Check about every"
+            hint={HINTS.checkInterval}
+          >
+            <select
+              className="w-full bg-transparent py-1.5 text-sm outline-none"
+              value={checkIntervalMinutes}
+              onChange={(e) =>
+                setCheckIntervalMinutes(Number(e.target.value))
+              }
             >
-              <input
-                type="number"
-                min={1}
-                max={12}
-                className="w-full bg-transparent py-1.5 text-sm outline-none"
-                value={maxAlertCount}
-                onChange={(e) =>
-                  setMaxAlertCount(
-                    e.target.value === "" ? "" : clampInt(e.target.value, 1, 12)
-                  )
-                }
-              />
-            </OutlinedField>
-            <OutlinedField
-              label="Cooldown hours"
-              hint={HINTS.cooldownHours}
-              invalid={showAddErrors && cooldownHours === ""}
-            >
-              <input
-                type="number"
-                min={1}
-                max={72}
-                className="w-full bg-transparent py-1.5 text-sm outline-none"
-                value={cooldownHours}
-                onChange={(e) =>
-                  setCooldownHours(
-                    e.target.value === "" ? "" : clampInt(e.target.value, 1, 72)
-                  )
-                }
-              />
-            </OutlinedField>
-          </div>
+              {CHECK_INTERVAL_OPTIONS.map((minutes) => (
+                <option key={minutes} value={minutes}>
+                  {formatCheckInterval(minutes)}
+                </option>
+              ))}
+            </select>
+          </OutlinedField>
           <button
             type="submit"
             disabled={busy}
             className={`btn-primary w-full sm:w-auto ${
-              busy ||
-              !projectId.trim() ||
-              maxAlertCount === "" ||
-              cooldownHours === ""
-                ? "opacity-50"
-                : ""
+              busy || !projectId.trim() ? "opacity-50" : ""
             }`}
           >
             {busy ? "Checking…" : "Add project"}
@@ -1335,18 +1111,6 @@ export default function DashboardPage() {
                   onRefreshTasks={refreshTasks}
                   onRefreshStatus={refreshStatus}
                   onBlocked={setBlocked}
-                  onResetCooldown={async (id) => {
-                    try {
-                      await patch(id, { resetCooldown: true });
-                    } catch (err) {
-                      setError(
-                        err instanceof Error
-                          ? err.message
-                          : "Failed to reset cooldown"
-                      );
-                      throw err;
-                    }
-                  }}
                   onToast={showToast}
                 />
               ))}

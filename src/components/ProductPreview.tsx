@@ -19,18 +19,14 @@ export function ProductPreview() {
               Alerts On
             </span>
           </div>
-          <div className="mt-4 grid gap-3 text-sm sm:grid-cols-3">
+          <div className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
             <div className="rounded-lg border border-hs-line bg-white px-3 py-2">
               <p className="text-xs text-hs-muted">Last check</p>
               <p className="font-medium text-hs-ink">2 min ago</p>
             </div>
             <div className="rounded-lg border border-hs-line bg-white px-3 py-2">
-              <p className="text-xs text-hs-muted">Max alerts</p>
-              <p className="font-medium text-hs-ink">3</p>
-            </div>
-            <div className="rounded-lg border border-hs-line bg-white px-3 py-2">
-              <p className="text-xs text-hs-muted">Alerts left</p>
-              <p className="font-medium text-hs-ink">2</p>
+              <p className="text-xs text-hs-muted">Check about every</p>
+              <p className="font-medium text-hs-ink">10 minutes</p>
             </div>
           </div>
           <p className="mt-3 text-xs text-hs-muted">
@@ -38,7 +34,7 @@ export function ProductPreview() {
           </p>
         </div>
         <div className="rounded-xl border border-dashed border-hs-line px-4 py-3 text-center text-sm text-hs-muted">
-          Add projects, toggle alerts, set max texts and cooldown hours.
+          Add projects, toggle alerts, and choose how often we check.
         </div>
       </div>
     </div>
