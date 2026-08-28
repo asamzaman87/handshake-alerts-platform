@@ -16,8 +16,22 @@ type Pack = {
   priceId: string;
 };
 
-const CHECKOUT_POLL_MS = 800;
-const CHECKOUT_POLL_MAX_MS = 30_000;
+const CHECKOUT_BASELINE_KEY = "handshake-checkout-baseline";
+const CHECKOUT_POLL_MS = 400;
+const CHECKOUT_POLL_MAX_MS = 15_000;
+
+function readCheckoutBaseline(): number | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = sessionStorage.getItem(CHECKOUT_BASELINE_KEY);
+    sessionStorage.removeItem(CHECKOUT_BASELINE_KEY);
+    if (raw === null || raw === "") return null;
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : null;
+  } catch {
+    return null;
+  }
+}
 
 export default function CreditsClient() {
   const router = useRouter();
@@ -29,7 +43,6 @@ export default function CreditsClient() {
   const [notice, setNotice] = useState("");
   const [buyingSlug, setBuyingSlug] = useState<string | null>(null);
   const [pollingBalance, setPollingBalance] = useState(false);
-  const checkoutBaselineRef = useRef<number | null>(null);
   const checkoutInFlightRef = useRef(false);
 
   useEffect(() => {
@@ -60,91 +73,27 @@ export default function CreditsClient() {
     }
 
     const checkout = searchParams.get("checkout");
+    const sessionId = searchParams.get("session_id");
+    let cancelled = false;
+
     if (checkout === "cancel") {
       setNotice("Checkout canceled — no charge was made.");
     }
 
-    loadWithRetries(load, 3)
-      .then((balance) => {
-        setError("");
-        if (checkout === "success") {
-          checkoutBaselineRef.current = balance;
-        }
-      })
-      .catch((err) => {
-        setError(err instanceof Error ? err.message : "Failed to load credits");
-      })
-      .finally(() => setReady(true));
-  }, [load, router, searchParams]);
-
-  useEffect(() => {
-    if (!ready || searchParams.get("checkout") !== "success") return;
-
-    const sessionId = searchParams.get("session_id");
-    let cancelled = false;
-
-    function finishCheckout(balance: number, baseline: number | null, granted = false) {
-      if (!granted && baseline !== null && balance <= baseline) {
-        return false;
-      }
+    async function finishWithBalance(balance: number) {
       setCredits(balance);
       setNotice("");
       setPollingBalance(false);
       setError("");
-      return true;
     }
 
-    async function processCheckout() {
-      setNotice("Payment received. Updating your balance…");
-      setPollingBalance(true);
-
-      let baseline = checkoutBaselineRef.current;
-
-      const fulfillPromise =
-        sessionId?.startsWith("cs_")
-          ? api<{ balance: number; granted: boolean }>(
-              "/api/handshake/credits/fulfill",
-              {
-                method: "POST",
-                body: JSON.stringify({ sessionId }),
-              }
-            ).catch(() => null)
-          : Promise.resolve(null);
-
-      const baselinePromise =
-        baseline === null
-          ? load()
-              .then((balance) => {
-                checkoutBaselineRef.current = balance;
-                setCredits(balance);
-                return balance;
-              })
-              .catch(() => null)
-          : Promise.resolve(baseline);
-
-      const [fulfillData, loadedBaseline] = await Promise.all([
-        fulfillPromise,
-        baselinePromise,
-      ]);
-      if (cancelled) return;
-
-      if (loadedBaseline !== null) {
-        baseline = loadedBaseline;
-      }
-
-      if (
-        fulfillData &&
-        typeof fulfillData.balance === "number" &&
-        finishCheckout(fulfillData.balance, baseline, fulfillData.granted)
-      ) {
-        return;
-      }
-
+    async function pollUntilCredited(baseline: number | null) {
       const startedAt = Date.now();
       while (!cancelled && Date.now() - startedAt < CHECKOUT_POLL_MAX_MS) {
         try {
           const balance = await load();
-          if (finishCheckout(balance, baseline)) {
+          if (baseline === null || balance > baseline) {
+            await finishWithBalance(balance);
             return;
           }
         } catch {
@@ -163,11 +112,71 @@ export default function CreditsClient() {
       }
     }
 
-    void processCheckout();
+    async function init() {
+      if (checkout === "success") {
+        setNotice("Payment received. Updating your balance…");
+        setPollingBalance(true);
+
+        const baseline = readCheckoutBaseline();
+
+        // Fulfill first — grants credits server-side. Don't wait for /me.
+        const fulfillPromise =
+          sessionId?.startsWith("cs_")
+            ? api<{ balance?: number; granted?: boolean }>(
+                "/api/handshake/credits/fulfill",
+                {
+                  method: "POST",
+                  body: JSON.stringify({ sessionId }),
+                }
+              )
+            : Promise.resolve(null);
+
+        const [fulfillData] = await Promise.all([
+          fulfillPromise.catch(() => null),
+          loadWithRetries(load, 1).catch(() => undefined),
+        ]);
+
+        if (cancelled) return;
+
+        if (fulfillData && typeof fulfillData.balance === "number") {
+          await finishWithBalance(fulfillData.balance);
+          setReady(true);
+          return;
+        }
+
+        // Webhook may have landed during fulfill; one quick /me before polling.
+        try {
+          const balance = await load();
+          if (baseline === null || balance > baseline) {
+            await finishWithBalance(balance);
+            setReady(true);
+            return;
+          }
+        } catch {
+          // Fall through to poll loop.
+        }
+
+        if (cancelled) return;
+        await pollUntilCredited(baseline);
+        if (!cancelled) setReady(true);
+        return;
+      }
+
+      try {
+        await loadWithRetries(load, 3);
+        setError("");
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load credits");
+      } finally {
+        if (!cancelled) setReady(true);
+      }
+    }
+
+    void init();
     return () => {
       cancelled = true;
     };
-  }, [load, ready, searchParams]);
+  }, [load, router, searchParams]);
 
   useEffect(() => {
     if (!ready) return;
@@ -201,6 +210,14 @@ export default function CreditsClient() {
     setError("");
     setBuyingSlug(pack.slug);
     try {
+      if (typeof credits === "number") {
+        try {
+          sessionStorage.setItem(CHECKOUT_BASELINE_KEY, String(credits));
+        } catch {
+          // sessionStorage may be unavailable; fulfill still works.
+        }
+      }
+
       const data = await api<{ url: string }>("/api/handshake/credits/checkout", {
         method: "POST",
         body: JSON.stringify({
@@ -215,6 +232,11 @@ export default function CreditsClient() {
       checkoutInFlightRef.current = false;
       setError(err instanceof Error ? err.message : "Checkout failed");
       setBuyingSlug(null);
+      try {
+        sessionStorage.removeItem(CHECKOUT_BASELINE_KEY);
+      } catch {
+        // ignore
+      }
     }
   }
 
@@ -266,9 +288,7 @@ export default function CreditsClient() {
               outOfCredits ? "text-red-700" : "text-hs-ink"
             }`}
           >
-            {pollingBalance && credits === checkoutBaselineRef.current
-              ? "…"
-              : credits ?? "—"}
+            {pollingBalance ? "…" : credits ?? "—"}
           </p>
           <p
             className={`mt-1 text-sm ${
