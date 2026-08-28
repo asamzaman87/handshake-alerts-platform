@@ -878,6 +878,7 @@ export default function DashboardPage() {
   const [addError, setAddError] = useState("");
   const [notice, setNotice] = useState("");
   const projectIdFieldRef = useRef<HTMLDivElement>(null);
+  const [addFormScrollTick, setAddFormScrollTick] = useState(0);
   const [busy, setBusy] = useState(false);
   const [refreshingTasksId, setRefreshingTasksId] = useState<string | null>(null);
   const [retryingLoad, setRetryingLoad] = useState(false);
@@ -1048,14 +1049,16 @@ export default function DashboardPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- poll + tab-focus refresh while dashboard is open
   }, [ready, router]);
 
+  function requestAddFormErrorScroll() {
+    setAddFormScrollTick((tick) => tick + 1);
+  }
+
   useLayoutEffect(() => {
-    const shouldScroll =
-      Boolean(addError) || (showAddErrors && !projectId.trim());
-    if (!shouldScroll) return;
+    if (addFormScrollTick === 0) return;
     const el = projectIdFieldRef.current;
     if (!el || isAddFormFieldFullyVisible(el)) return;
     el.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
-  }, [addError, showAddErrors, projectId]);
+  }, [addFormScrollTick]);
 
   async function addProject(e: FormEvent) {
     e.preventDefault();
@@ -1065,6 +1068,7 @@ export default function DashboardPage() {
     const missingProjectId = !projectId.trim();
     if (missingProjectId) {
       setShowAddErrors(true);
+      requestAddFormErrorScroll();
       return;
     }
     setBusy(true);
@@ -1100,6 +1104,7 @@ export default function DashboardPage() {
       const message =
         err instanceof Error ? err.message : "Failed to add project";
       setAddError(message);
+      requestAddFormErrorScroll();
     } finally {
       setBusy(false);
     }
