@@ -1,11 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { api } from "@/lib/api";
-import {
-  ALERT_FROM_NUMBER,
-  ALERT_FROM_NUMBER_DISPLAY,
-} from "@/lib/constants";
+import { ALERT_FROM_NUMBER_DISPLAY } from "@/lib/constants";
 
 type Props = {
   onResumed: () => void;
@@ -13,9 +10,6 @@ type Props = {
 
 /** Blocking modal while the user has replied STOP. Clears after Twilio START is received. */
 export function SmsOptOutLockModal({ onResumed }: Props) {
-  const [copied, setCopied] = useState(false);
-  const restartHref = `sms:${ALERT_FROM_NUMBER}?body=${encodeURIComponent("START")}`;
-
   useEffect(() => {
     let cancelled = false;
 
@@ -39,17 +33,6 @@ export function SmsOptOutLockModal({ onResumed }: Props) {
       window.clearInterval(id);
     };
   }, [onResumed]);
-
-  async function copyRestartInstructions() {
-    const text = `Text START to ${ALERT_FROM_NUMBER_DISPLAY} to resume Handshake Alerts messages.`;
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 2000);
-    } catch {
-      setCopied(false);
-    }
-  }
 
   return (
     <div
@@ -82,19 +65,6 @@ export function SmsOptOutLockModal({ onResumed }: Props) {
         <p className="mt-3 text-sm font-semibold text-amber-900">
           Text START to {ALERT_FROM_NUMBER_DISPLAY} to resume alerts.
         </p>
-        <a href={restartHref} className="btn-primary mt-6 flex w-full text-center">
-          Restart messages
-          <span aria-hidden="true" className="ml-1.5">
-            →
-          </span>
-        </a>
-        <button
-          type="button"
-          className="mt-3 w-full rounded-full border border-hs-line bg-white px-4 py-2.5 text-sm font-semibold text-hs-ink transition hover:bg-hs-bg"
-          onClick={() => void copyRestartInstructions()}
-        >
-          {copied ? "Copied instructions" : "Copy restart instructions"}
-        </button>
       </div>
     </div>
   );
