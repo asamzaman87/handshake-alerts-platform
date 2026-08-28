@@ -985,10 +985,10 @@ export default function DashboardPage() {
         <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm leading-relaxed text-amber-950">
           <p className="font-semibold">SMS alerts are paused</p>
           <p className="mt-2">
-            You replied STOP, so we turned off monitoring and stopped using
-            credits. Text <span className="font-semibold">START</span> to{" "}
-            {ALERT_FROM_NUMBER_DISPLAY}, then turn the alert back on for each
-            project below.
+            You replied STOP, so we paused texts and stopped using credits. Your
+            alert settings are unchanged. Text{" "}
+            <span className="font-semibold">START</span> to{" "}
+            {ALERT_FROM_NUMBER_DISPLAY} to resume alerts.
           </p>
         </div>
       ) : null}
