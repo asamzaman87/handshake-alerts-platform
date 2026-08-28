@@ -511,8 +511,9 @@ function ProjectCard({
     setDraftCooldown(project.alertCooldownMinutes);
   }, [project.alertCooldownMinutes]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!project.onCooldown || !project.alertsCooldownUntil) return;
+    setNow(Date.now());
     const id = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(id);
   }, [project.onCooldown, project.alertsCooldownUntil]);
