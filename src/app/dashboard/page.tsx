@@ -41,22 +41,16 @@ const HINTS = {
 const TOOLTIP_WIDTH = 224; // w-56
 const TOOLTIP_GAP = 8;
 const VIEWPORT_PAD = 12;
+/** Treat the field as clipped once it slides under the sticky header area. */
+const ADD_FORM_TOP_PAD = 80;
 
-function isAddFormFieldInView(el: HTMLElement) {
+function isAddFormFieldFullyVisible(el: HTMLElement) {
   const rect = el.getBoundingClientRect();
-  const pad = VIEWPORT_PAD;
   const viewHeight = window.innerHeight;
-
-  if (rect.bottom <= pad || rect.top >= viewHeight - pad) {
-    return false;
-  }
-
-  const visibleTop = Math.max(rect.top, pad);
-  const visibleBottom = Math.min(rect.bottom, viewHeight - pad);
-  const visibleHeight = visibleBottom - visibleTop;
-  const totalHeight = Math.max(rect.height, 1);
-
-  return visibleHeight >= totalHeight * 0.98;
+  return (
+    rect.top >= ADD_FORM_TOP_PAD &&
+    rect.bottom <= viewHeight - VIEWPORT_PAD
+  );
 }
 
 function FieldHint({ text }: { text: string }) {
@@ -1059,7 +1053,7 @@ export default function DashboardPage() {
       Boolean(addError) || (showAddErrors && !projectId.trim());
     if (!shouldScroll) return;
     const el = projectIdFieldRef.current;
-    if (!el || isAddFormFieldInView(el)) return;
+    if (!el || isAddFormFieldFullyVisible(el)) return;
     el.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
   }, [addError, showAddErrors, projectId]);
 
