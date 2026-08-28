@@ -48,9 +48,29 @@ export default function CreditsClient() {
     }
 
     const checkout = searchParams.get("checkout");
+    const sessionId = searchParams.get("session_id");
     if (checkout === "success") {
       setNotice("Payment received. Updating your balance…");
       setPollingBalance(true);
+      if (sessionId?.startsWith("cs_")) {
+        void api<{ balance: number; granted: boolean }>(
+          "/api/handshake/credits/fulfill",
+          {
+            method: "POST",
+            body: JSON.stringify({ sessionId }),
+          }
+        )
+          .then((data) => {
+            if (typeof data.balance === "number") {
+              setCredits(data.balance);
+              if (data.granted || data.balance > 0) {
+                setNotice(`Payment received. You now have ${data.balance} credits.`);
+                setPollingBalance(false);
+              }
+            }
+          })
+          .catch(() => undefined);
+      }
     } else if (checkout === "cancel") {
       setNotice("Checkout canceled — no charge was made.");
     }
@@ -139,7 +159,8 @@ export default function CreditsClient() {
         method: "POST",
         body: JSON.stringify({
           slug: pack.slug,
-          successUrl: "https://handshakealerts.com/credits/?checkout=success",
+          successUrl:
+            "https://handshakealerts.com/credits/?checkout=success&session_id={CHECKOUT_SESSION_ID}",
           cancelUrl: "https://handshakealerts.com/credits/?checkout=cancel",
         }),
       });
