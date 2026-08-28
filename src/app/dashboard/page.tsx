@@ -591,7 +591,15 @@ function ProjectCard({
 
       await onPatch(project.id, { alertCooldownMinutes: nextCooldown });
       const name = project.displayName || "Untitled project";
-      onToast(`Cooldown updated for ${name}.`);
+      if (fresh.onCooldown && fresh.alertsCooldownUntil) {
+        onBlocked({
+          title: "Cooldown saved",
+          message:
+            "This new cooldown will take effect the next time this project cools down. The current cooldown is not affected.",
+        });
+      } else {
+        onToast(`Cooldown updated for ${name}.`);
+      }
     } catch {
       setDraftCooldown(project.alertCooldownMinutes);
     } finally {
