@@ -42,6 +42,13 @@ const TOOLTIP_WIDTH = 224; // w-56
 const TOOLTIP_GAP = 8;
 const VIEWPORT_PAD = 12;
 
+function isAddFormFieldInView(el: HTMLElement) {
+  const rect = el.getBoundingClientRect();
+  const topBound = 112; // matches scroll-mt-28 for fixed header clearance
+  const bottomBound = window.innerHeight - VIEWPORT_PAD;
+  return rect.top >= topBound && rect.bottom <= bottomBound;
+}
+
 function FieldHint({ text }: { text: string }) {
   const [open, setOpen] = useState(false);
   const [pinned, setPinned] = useState(false);
@@ -1043,6 +1050,7 @@ export default function DashboardPage() {
     const el = projectIdFieldRef.current;
     if (!el) return;
     requestAnimationFrame(() => {
+      if (isAddFormFieldInView(el)) return;
       el.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
     });
   }, [addError, showAddErrors, projectId]);
