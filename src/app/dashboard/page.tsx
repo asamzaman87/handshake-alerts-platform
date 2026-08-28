@@ -415,38 +415,34 @@ function ProjectCard({
   const [draftInterval, setDraftInterval] = useState(
     project.checkIntervalMinutes
   );
-  const [saving, setSaving] = useState(false);
+  const [savingInterval, setSavingInterval] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   useEffect(() => {
     setDraftInterval(project.checkIntervalMinutes);
   }, [project.checkIntervalMinutes]);
 
-  const dirty = draftInterval !== project.checkIntervalMinutes;
+  async function saveInterval(nextInterval: number) {
+    if (nextInterval === project.checkIntervalMinutes) return;
 
-  function cancelEdits() {
-    setDraftInterval(project.checkIntervalMinutes);
-  }
-
-  async function saveEdits() {
-    if (!dirty) return;
-
-    setSaving(true);
+    setSavingInterval(true);
     try {
       let fresh: Project | null;
       try {
         fresh = await onRefreshStatus(project.id);
       } catch (err) {
+        setDraftInterval(project.checkIntervalMinutes);
         onBlocked({
           title: "Couldn’t refresh project",
           message:
             err instanceof Error
               ? err.message
-              : "Check your connection and try saving again.",
+              : "Check your connection and try again.",
         });
         return;
       }
       if (!fresh) {
+        setDraftInterval(project.checkIntervalMinutes);
         onBlocked({
           title: "Project not found",
           message:
@@ -455,18 +451,18 @@ function ProjectCard({
         return;
       }
 
-      if (draftInterval === fresh.checkIntervalMinutes) {
+      if (nextInterval === fresh.checkIntervalMinutes) {
         setDraftInterval(fresh.checkIntervalMinutes);
         return;
       }
 
-      await onPatch(project.id, { checkIntervalMinutes: draftInterval });
+      await onPatch(project.id, { checkIntervalMinutes: nextInterval });
       const name = project.displayName || "Untitled project";
-      onToast(`Saved changes for ${name}.`);
+      onToast(`Check interval updated for ${name}.`);
     } catch {
-      // Parent onPatch already surfaces the error.
+      setDraftInterval(project.checkIntervalMinutes);
     } finally {
-      setSaving(false);
+      setSavingInterval(false);
     }
   }
 
@@ -488,14 +484,6 @@ function ProjectCard({
       title: "Alerts are off",
       message:
         "Turn alerts on for this project if you want to change how often we check.",
-    });
-  }
-
-  function showAlertsOffSettingsModal() {
-    onBlocked({
-      title: "Alerts are off",
-      message:
-        "Turn alerts on for this project if you want to edit settings.",
     });
   }
 
@@ -530,14 +518,24 @@ function ProjectCard({
               {project.handshakeProjectId}
             </p>
           </div>
-          <AlertsToggle
-            on={project.alertsEnabled}
-            onToggle={() => {
-              void onPatch(project.id, {
-                alertsEnabled: !project.alertsEnabled,
-              }).catch(() => undefined);
-            }}
-          />
+          <div className="flex shrink-0 items-center gap-3">
+            <AlertsToggle
+              on={project.alertsEnabled}
+              onToggle={() => {
+                void onPatch(project.id, {
+                  alertsEnabled: !project.alertsEnabled,
+                }).catch(() => undefined);
+              }}
+            />
+            <button
+              type="button"
+              className="rounded-full border border-red-200 px-3 py-1.5 text-sm font-semibold text-red-700 transition hover:bg-red-50 disabled:opacity-40"
+              disabled={creditsLocked}
+              onClick={() => setConfirmDelete(true)}
+            >
+              Delete
+            </button>
+          </div>
         </div>
       </div>
 
@@ -564,16 +562,22 @@ function ProjectCard({
           <div className={interactionLocked ? "opacity-40" : ""}>
             <OutlinedField
               label="Check about every"
-              hint={HINTS.checkInterval}
+              hint={
+                savingInterval
+                  ? "Saving…"
+                  : HINTS.checkInterval
+              }
               muted={interactionLocked}
             >
               <select
-                disabled={interactionLocked}
+                disabled={interactionLocked || savingInterval}
                 className="w-full bg-transparent py-1.5 text-sm outline-none disabled:cursor-not-allowed"
                 value={draftInterval}
                 onChange={(e) => {
-                  if (interactionLocked) return;
-                  setDraftInterval(Number(e.target.value));
+                  if (interactionLocked || savingInterval) return;
+                  const next = Number(e.target.value);
+                  setDraftInterval(next);
+                  void saveInterval(next);
                 }}
               >
                 {CHECK_INTERVAL_OPTIONS.map((minutes) => (
@@ -592,53 +596,6 @@ function ProjectCard({
               onClick={showAlertsOffModal}
             />
           ) : null}
-        </div>
-
-        <div className="relative flex flex-wrap items-center gap-3 border-t border-hs-line pt-4">
-          <button
-            type="button"
-            className={`btn-primary-sm ${
-              creditsLocked || saving || (!alertsLocked && !dirty)
-                ? "disabled:opacity-40"
-                : ""
-            } ${alertsLocked && !creditsLocked ? "opacity-40" : ""}`}
-            disabled={creditsLocked || saving || (!alertsLocked && !dirty)}
-            onClick={() => {
-              if (alertsLocked) {
-                showAlertsOffSettingsModal();
-                return;
-              }
-              void saveEdits();
-            }}
-          >
-            {saving ? "Saving…" : "Save changes"}
-          </button>
-          <button
-            type="button"
-            className={`rounded-full border border-hs-line px-4 py-2 text-sm font-semibold text-hs-ink transition hover:border-hs-ink ${
-              creditsLocked || saving || (!alertsLocked && !dirty)
-                ? "disabled:opacity-40"
-                : ""
-            } ${alertsLocked && !creditsLocked ? "opacity-40" : ""}`}
-            disabled={creditsLocked || saving || (!alertsLocked && !dirty)}
-            onClick={() => {
-              if (alertsLocked) {
-                showAlertsOffSettingsModal();
-                return;
-              }
-              cancelEdits();
-            }}
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            className="ml-auto rounded-full border border-red-200 px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-50 disabled:opacity-40"
-            disabled={creditsLocked}
-            onClick={() => setConfirmDelete(true)}
-          >
-            Delete
-          </button>
         </div>
       </div>
       {confirmDelete ? (
