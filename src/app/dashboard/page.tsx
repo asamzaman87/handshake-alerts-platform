@@ -620,11 +620,18 @@ function ProjectCard({
     });
   }
 
-  function showAlertsOffModal() {
+  function showAlertsOffModal(
+    context: "checkInterval" | "pauseDuration" | "postAlertPause"
+  ) {
+    const message =
+      context === "checkInterval"
+        ? "Turn the alert on for this project to change how often we check for tasks."
+        : context === "pauseDuration"
+          ? "Turn the alert on for this project to change how long we pause checking after an alert."
+          : "Turn the alert on for this project to resume checking early and end the post-alert pause.";
     onBlocked({
       title: "Alert is off",
-      message:
-        "Turn the alert on for this project to reset the cooldown or change how often we check for tasks and how long we pause after an alert.",
+      message,
     });
   }
 
@@ -705,11 +712,11 @@ function ProjectCard({
               }`}
             >
               <p className="text-sm text-amber-900">
-                Cooldown time remaining:{" "}
+                Pause after alert — time remaining:{" "}
                 <span className="tabular-nums font-semibold">
                   {cooldownRemainingLabel(project.alertsCooldownUntil, now)}
                 </span>
-                . We will start checking this project again then.
+                . We will resume checking this project then.
               </p>
               <button
                 type="button"
@@ -721,7 +728,7 @@ function ProjectCard({
                   try {
                     await onPatch(project.id, { resetCooldown: true });
                     const name = project.displayName || "Untitled project";
-                    onToast(`Cooldown reset for ${name}.`);
+                    onToast(`Checking resumed for ${name}.`);
                   } catch {
                     // Parent surfaces patch errors.
                   } finally {
@@ -729,7 +736,7 @@ function ProjectCard({
                   }
                 }}
               >
-                {resettingCooldown ? "Resetting…" : "Reset cooldown"}
+                {resettingCooldown ? "Resuming…" : "Resume checking"}
               </button>
             </div>
             {!creditsLocked && alertsLocked ? (
@@ -737,81 +744,91 @@ function ProjectCard({
                 type="button"
                 className="absolute inset-0 z-10 cursor-pointer rounded-xl"
                 aria-label="Alert is off"
-                onClick={showAlertsOffModal}
+                onClick={() => showAlertsOffModal("postAlertPause")}
               />
             ) : null}
           </div>
         ) : null}
 
-        <div className="relative">
-          <div
-            className={`grid gap-4 sm:grid-cols-2 ${
-              interactionLocked ? "opacity-40" : ""
-            }`}
-          >
-            <OutlinedField
-              label="Check about every"
-              hint={
-                savingInterval
-                  ? "Saving…"
-                  : HINTS.checkInterval
-              }
-              muted={interactionLocked}
-            >
-              <select
-                disabled={interactionLocked || savingInterval}
-                className="w-full bg-transparent py-1.5 text-sm outline-none disabled:cursor-not-allowed"
-                value={draftInterval}
-                onChange={(e) => {
-                  if (interactionLocked || savingInterval) return;
-                  const next = Number(e.target.value);
-                  setDraftInterval(next);
-                  void saveInterval(next);
-                }}
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="relative">
+            <div className={interactionLocked ? "opacity-40" : ""}>
+              <OutlinedField
+                label="Check about every"
+                hint={
+                  savingInterval
+                    ? "Saving…"
+                    : HINTS.checkInterval
+                }
+                muted={interactionLocked}
               >
-                {CHECK_INTERVAL_OPTIONS.map((minutes) => (
-                  <option key={minutes} value={minutes}>
-                    {formatCheckInterval(minutes)}
-                  </option>
-                ))}
-              </select>
-            </OutlinedField>
-            <OutlinedField
-              label="After an alert, pause checking for"
-              hint={
-                savingCooldown
-                  ? "Saving…"
-                  : HINTS.alertCooldown
-              }
-              muted={interactionLocked}
-            >
-              <select
-                disabled={interactionLocked || savingCooldown}
-                className="w-full bg-transparent py-1.5 text-sm outline-none disabled:cursor-not-allowed"
-                value={draftCooldown}
-                onChange={(e) => {
-                  if (interactionLocked || savingCooldown) return;
-                  const next = Number(e.target.value);
-                  setDraftCooldown(next);
-                  void saveCooldown(next);
-                }}
-              >
-                {COOLDOWN_INTERVAL_OPTIONS.map((minutes) => (
-                  <option key={minutes} value={minutes}>
-                    {formatCooldownInterval(minutes)}
-                  </option>
-                ))}
-              </select>
-            </OutlinedField>
+                <select
+                  disabled={interactionLocked || savingInterval}
+                  className="w-full bg-transparent py-1.5 text-sm outline-none disabled:cursor-not-allowed"
+                  value={draftInterval}
+                  onChange={(e) => {
+                    if (interactionLocked || savingInterval) return;
+                    const next = Number(e.target.value);
+                    setDraftInterval(next);
+                    void saveInterval(next);
+                  }}
+                >
+                  {CHECK_INTERVAL_OPTIONS.map((minutes) => (
+                    <option key={minutes} value={minutes}>
+                      {formatCheckInterval(minutes)}
+                    </option>
+                  ))}
+                </select>
+              </OutlinedField>
+            </div>
+            {!creditsLocked && alertsLocked ? (
+              <button
+                type="button"
+                className="absolute inset-0 z-10 cursor-pointer rounded-xl"
+                aria-label="Alert is off"
+                onClick={() => showAlertsOffModal("checkInterval")}
+              />
+            ) : null}
           </div>
-          {!creditsLocked && alertsLocked ? (
-            <button
-              type="button"
-              className="absolute inset-0 z-10 cursor-pointer rounded-xl"
-              aria-label="Alert is off"
-              onClick={showAlertsOffModal}
-            />
-          ) : null}
+          <div className="relative">
+            <div className={interactionLocked ? "opacity-40" : ""}>
+              <OutlinedField
+                label="After an alert, pause checking for"
+                hint={
+                  savingCooldown
+                    ? "Saving…"
+                    : HINTS.alertCooldown
+                }
+                muted={interactionLocked}
+              >
+                <select
+                  disabled={interactionLocked || savingCooldown}
+                  className="w-full bg-transparent py-1.5 text-sm outline-none disabled:cursor-not-allowed"
+                  value={draftCooldown}
+                  onChange={(e) => {
+                    if (interactionLocked || savingCooldown) return;
+                    const next = Number(e.target.value);
+                    setDraftCooldown(next);
+                    void saveCooldown(next);
+                  }}
+                >
+                  {COOLDOWN_INTERVAL_OPTIONS.map((minutes) => (
+                    <option key={minutes} value={minutes}>
+                      {formatCooldownInterval(minutes)}
+                    </option>
+                  ))}
+                </select>
+              </OutlinedField>
+            </div>
+            {!creditsLocked && alertsLocked ? (
+              <button
+                type="button"
+                className="absolute inset-0 z-10 cursor-pointer rounded-xl"
+                aria-label="Alert is off"
+                onClick={() => showAlertsOffModal("pauseDuration")}
+              />
+            ) : null}
+          </div>
         </div>
       </div>
       {confirmDelete ? (
