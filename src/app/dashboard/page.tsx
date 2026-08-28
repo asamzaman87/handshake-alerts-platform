@@ -970,7 +970,7 @@ export default function DashboardPage() {
                 {projects.length} project{projects.length === 1 ? "" : "s"}
               </span>
               <span className="rounded-full border border-hs-line bg-hs-bg px-4 py-2 text-sm font-medium text-hs-ink">
-                {alertsOn} project{alertsOn === 1 ? "" : "s"} monitoring
+                {alertsOn} alert{alertsOn === 1 ? "" : "s"} on
               </span>
             </div>
           </div>
