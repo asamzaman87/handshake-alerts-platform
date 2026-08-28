@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { MarketingShell } from "@/components/MarketingShell";
 import { api, getToken } from "@/lib/api";
+import { loadWithRetries } from "@/lib/loadWithRetries";
 
 type Pack = {
   slug: string;
@@ -15,6 +16,9 @@ type Pack = {
   priceId: string;
 };
 
+const CHECKOUT_POLL_MS = 2000;
+const CHECKOUT_POLL_MAX_MS = 120_000;
+
 export default function CreditsClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -24,41 +28,108 @@ export default function CreditsClient() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [buyingSlug, setBuyingSlug] = useState<string | null>(null);
+  const [pollingBalance, setPollingBalance] = useState(false);
+  const checkoutBaselineRef = useRef<number | null>(null);
 
-  async function load() {
+  const load = useCallback(async () => {
     const data = await api<{
       user: { alertCredits: number };
       packs: Pack[];
     }>("/api/handshake/me");
     setCredits(data.user.alertCredits);
     setPacks(data.packs);
-  }
+    return data.user.alertCredits;
+  }, []);
 
   useEffect(() => {
     if (!getToken()) {
       router.replace("/sign-in/");
       return;
     }
+
     const checkout = searchParams.get("checkout");
     if (checkout === "success") {
-      setNotice("Payment received. Your credits will appear in a few seconds.");
+      setNotice("Payment received. Updating your balance…");
+      setPollingBalance(true);
     } else if (checkout === "cancel") {
       setNotice("Checkout canceled — no charge was made.");
     }
-    load()
+
+    loadWithRetries(load, 3)
+      .then((balance) => {
+        setError("");
+        if (checkout === "success") {
+          checkoutBaselineRef.current = balance;
+        }
+      })
       .catch((err) => {
         setError(err instanceof Error ? err.message : "Failed to load credits");
       })
       .finally(() => setReady(true));
-  }, [router, searchParams]);
+  }, [load, router, searchParams]);
 
   useEffect(() => {
-    if (searchParams.get("checkout") !== "success") return;
-    const id = window.setTimeout(() => {
-      load().catch(() => undefined);
-    }, 1500);
-    return () => window.clearTimeout(id);
-  }, [searchParams]);
+    if (!ready || searchParams.get("checkout") !== "success") return;
+
+    const startedAt = Date.now();
+    let cancelled = false;
+
+    async function pollForCredits() {
+      while (!cancelled && Date.now() - startedAt < CHECKOUT_POLL_MAX_MS) {
+        await new Promise((resolve) => window.setTimeout(resolve, CHECKOUT_POLL_MS));
+        if (cancelled) return;
+        try {
+          const balance = await load();
+          const baseline = checkoutBaselineRef.current;
+          if (baseline !== null && balance > baseline) {
+            setNotice(`Payment received. You now have ${balance} credits.`);
+            setPollingBalance(false);
+            setError("");
+            return;
+          }
+        } catch {
+          // Keep polling through transient errors after checkout.
+        }
+      }
+      if (!cancelled) {
+        setPollingBalance(false);
+        setNotice(
+          "Payment received. If your balance still looks wrong, tap Retry below or refresh in a moment."
+        );
+      }
+    }
+
+    void pollForCredits();
+    return () => {
+      cancelled = true;
+    };
+  }, [load, ready, searchParams]);
+
+  useEffect(() => {
+    if (!ready) return;
+    const refresh = () => {
+      void load().catch(() => undefined);
+    };
+    const onVisible = () => {
+      if (document.visibilityState === "visible") refresh();
+    };
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [load, ready]);
+
+  async function retryLoad() {
+    setError("");
+    setNotice("");
+    try {
+      await loadWithRetries(load, 3);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load credits");
+    }
+  }
 
   async function buy(pack: Pack) {
     setError("");
@@ -127,7 +198,9 @@ export default function CreditsClient() {
               outOfCredits ? "text-red-700" : "text-hs-ink"
             }`}
           >
-            {credits ?? "—"}
+            {pollingBalance && credits === checkoutBaselineRef.current
+              ? "…"
+              : credits ?? "—"}
           </p>
           <p
             className={`mt-1 text-sm ${
@@ -149,9 +222,16 @@ export default function CreditsClient() {
           </p>
         ) : null}
         {error ? (
-          <p className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {error}
-          </p>
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <p>{error}</p>
+            <button
+              type="button"
+              className="shrink-0 rounded-full border border-red-300 bg-white px-4 py-1.5 text-sm font-semibold text-red-800 transition hover:bg-red-100"
+              onClick={() => void retryLoad()}
+            >
+              Retry
+            </button>
+          </div>
         ) : null}
 
         <div className="mt-8 grid gap-4 sm:grid-cols-2">

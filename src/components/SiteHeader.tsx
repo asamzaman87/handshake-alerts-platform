@@ -14,22 +14,52 @@ type NavKey =
   | "feedback"
   | "credits";
 
+type NavItem = { key: NavKey; href: string; label: string; signedInOnly?: boolean };
+
+const NAV_ITEMS: NavItem[] = [
+  { key: "dashboard", href: "/dashboard/", label: "Dashboard", signedInOnly: true },
+  { key: "credits", href: "/credits/", label: "Credits", signedInOnly: true },
+  { key: "how", href: "/how-it-works/", label: "How it works" },
+  { key: "faq", href: "/faq/", label: "FAQ" },
+  { key: "feedback", href: "/feedback/", label: "Give feedback" },
+  { key: "contact", href: "/contact/", label: "Contact" },
+];
+
 export function SiteHeader({ active }: { active?: NavKey }) {
   const router = useRouter();
   const [signedIn, setSignedIn] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     setSignedIn(!!getToken());
   }, []);
+
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [active]);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMenuOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [menuOpen]);
 
   const linkClass = (key: NavKey) =>
     key === active
       ? "font-semibold text-hs-ink"
       : "text-hs-muted transition hover:text-hs-ink";
 
+  const visibleItems = NAV_ITEMS.filter(
+    (item) => !item.signedInOnly || signedIn
+  );
+
   function signOut() {
     clearToken();
     setSignedIn(false);
+    setMenuOpen(false);
     router.push("/");
   }
 
@@ -47,40 +77,78 @@ export function SiteHeader({ active }: { active?: NavKey }) {
             Handshake <span className="font-medium text-hs-muted">Alerts</span>
           </span>
         </Link>
+
         <nav className="hidden items-center gap-7 text-sm md:flex">
-          {signedIn ? (
-            <Link href="/dashboard/" className={linkClass("dashboard")}>
-              Dashboard
+          {visibleItems.map((item) => (
+            <Link key={item.key} href={item.href} className={linkClass(item.key)}>
+              {item.label}
             </Link>
-          ) : null}
-          {signedIn ? (
-            <Link href="/credits/" className={linkClass("credits")}>
-              Credits
-            </Link>
-          ) : null}
-          <Link href="/how-it-works/" className={linkClass("how")}>
-            How it works
-          </Link>
-          <Link href="/faq/" className={linkClass("faq")}>
-            FAQ
-          </Link>
-          <Link href="/feedback/" className={linkClass("feedback")}>
-            Give feedback
-          </Link>
-          <Link href="/contact/" className={linkClass("contact")}>
-            Contact
-          </Link>
+          ))}
         </nav>
-        {signedIn ? (
-          <button type="button" onClick={signOut} className="btn-primary-sm shrink-0">
-            Sign out
+
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            type="button"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-hs-line text-hs-ink md:hidden"
+            aria-expanded={menuOpen}
+            aria-controls="mobile-site-nav"
+            aria-label={menuOpen ? "Close menu" : "Open menu"}
+            onClick={() => setMenuOpen((open) => !open)}
+          >
+            <span className="sr-only">{menuOpen ? "Close menu" : "Open menu"}</span>
+            {menuOpen ? (
+              <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
+                <path
+                  d="M6 6l12 12M18 6L6 18"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
+              </svg>
+            ) : (
+              <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
+                <path
+                  d="M4 7h16M4 12h16M4 17h16"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
+              </svg>
+            )}
           </button>
-        ) : (
-          <Link href="/sign-in/" className="btn-primary-sm shrink-0">
-            Sign in
-          </Link>
-        )}
+
+          {signedIn ? (
+            <button type="button" onClick={signOut} className="btn-primary-sm">
+              Sign out
+            </button>
+          ) : (
+            <Link href="/sign-in/" className="btn-primary-sm">
+              Sign in
+            </Link>
+          )}
+        </div>
       </div>
+
+      {menuOpen ? (
+        <nav
+          id="mobile-site-nav"
+          className="border-t border-hs-line bg-hs-bg px-6 py-4 md:hidden"
+        >
+          <ul className="space-y-1 text-sm">
+            {visibleItems.map((item) => (
+              <li key={item.key}>
+                <Link
+                  href={item.href}
+                  className={`block rounded-xl px-3 py-2.5 ${linkClass(item.key)}`}
+                  onClick={() => setMenuOpen(false)}
+                >
+                  {item.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      ) : null}
     </header>
   );
 }
