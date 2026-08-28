@@ -13,6 +13,7 @@ import { ToastStack, type ToastItem } from "@/components/ToastStack";
 import {
   api,
   CHECK_INTERVAL_OPTIONS,
+  COOLDOWN_INTERVAL_OPTIONS,
   clearToken,
   formatCheckInterval,
   getToken,
@@ -21,6 +22,7 @@ import {
 import { TEST_MODE, TEST_MODE_TASK_COUNT } from "@/lib/constants";
 
 const DEFAULT_CHECK_INTERVAL = 10;
+const DEFAULT_ALERT_COOLDOWN = 30;
 /** User balance + SMS opt-out while dashboard is open. */
 const ME_POLL_MS = 8_000;
 /** Project last-check and task counts while dashboard is open. */
@@ -31,6 +33,8 @@ const HINTS = {
     "The Handshake project UUID from the project page. The video above shows where to copy it.",
   checkInterval:
     "How often we look for claimable tasks on this project. Times are approximate.",
+  alertCooldown:
+    "After we text you about available tasks, we pause checking this project for this long before looking again.",
 };
 
 function isProjectIdAddError(message: string) {
@@ -348,6 +352,15 @@ function tasksFoundLabel(count: number) {
   return `${count} tasks found`;
 }
 
+function cooldownRemainingLabel(iso: string, nowMs = Date.now()) {
+  const ms = Math.max(0, new Date(iso).getTime() - nowMs);
+  const totalSecs = Math.floor(ms / 1000);
+  const hours = Math.floor(totalSecs / 3600);
+  const mins = Math.floor((totalSecs % 3600) / 60);
+  const secs = totalSecs % 60;
+  return `${hours}:${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+}
+
 function RefreshIcon({ spinning }: { spinning?: boolean }) {
   return (
     <svg
@@ -467,12 +480,35 @@ function ProjectCard({
   const [draftInterval, setDraftInterval] = useState(
     project.checkIntervalMinutes
   );
+  const [draftCooldown, setDraftCooldown] = useState(
+    project.alertCooldownMinutes
+  );
   const [savingInterval, setSavingInterval] = useState(false);
+  const [savingCooldown, setSavingCooldown] = useState(false);
+  const [resettingCooldown, setResettingCooldown] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [now, setNow] = useState(Date.now());
 
   useEffect(() => {
     setDraftInterval(project.checkIntervalMinutes);
   }, [project.checkIntervalMinutes]);
+
+  useEffect(() => {
+    setDraftCooldown(project.alertCooldownMinutes);
+  }, [project.alertCooldownMinutes]);
+
+  useEffect(() => {
+    if (!project.onCooldown || !project.alertsCooldownUntil) return;
+    const id = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, [project.onCooldown, project.alertsCooldownUntil]);
+
+  useEffect(() => {
+    if (!project.onCooldown || !project.alertsCooldownUntil) return;
+    if (new Date(project.alertsCooldownUntil).getTime() > now) return;
+    void onRefreshStatus(project.id).catch(() => undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- refresh when countdown expires
+  }, [now, project.id, project.onCooldown, project.alertsCooldownUntil]);
 
   async function saveInterval(nextInterval: number) {
     if (nextInterval === project.checkIntervalMinutes) return;
@@ -518,6 +554,50 @@ function ProjectCard({
     }
   }
 
+  async function saveCooldown(nextCooldown: number) {
+    if (nextCooldown === project.alertCooldownMinutes) return;
+
+    setSavingCooldown(true);
+    try {
+      let fresh: Project | null;
+      try {
+        fresh = await onRefreshStatus(project.id);
+      } catch (err) {
+        setDraftCooldown(project.alertCooldownMinutes);
+        onBlocked({
+          title: "Couldn’t refresh project",
+          message:
+            err instanceof Error
+              ? err.message
+              : "Check your connection and try again.",
+        });
+        return;
+      }
+      if (!fresh) {
+        setDraftCooldown(project.alertCooldownMinutes);
+        onBlocked({
+          title: "Project not found",
+          message:
+            "This project is no longer available. Refresh the page and try again.",
+        });
+        return;
+      }
+
+      if (nextCooldown === fresh.alertCooldownMinutes) {
+        setDraftCooldown(fresh.alertCooldownMinutes);
+        return;
+      }
+
+      await onPatch(project.id, { alertCooldownMinutes: nextCooldown });
+      const name = project.displayName || "Untitled project";
+      onToast(`Cooldown updated for ${name}.`);
+    } catch {
+      setDraftCooldown(project.alertCooldownMinutes);
+    } finally {
+      setSavingCooldown(false);
+    }
+  }
+
   const alertsLocked = !project.alertsEnabled;
   const interactionLocked = creditsLocked || alertsLocked;
 
@@ -535,7 +615,7 @@ function ProjectCard({
     onBlocked({
       title: "Alert is off",
       message:
-        "Turn the alert on for this project to change how often we check for tasks.",
+        "Turn the alert on for this project to change how often we check for tasks or how long we pause after an alert.",
     });
   }
 
@@ -608,8 +688,44 @@ function ProjectCard({
           </div>
         </div>
 
+        {project.onCooldown && project.alertsCooldownUntil ? (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-amber-50 px-4 py-3">
+            <p className="text-sm text-amber-900">
+              Cooldown time remaining:{" "}
+              <span className="tabular-nums font-semibold">
+                {cooldownRemainingLabel(project.alertsCooldownUntil, now)}
+              </span>
+              . We will start checking this project again then.
+            </p>
+            <button
+              type="button"
+              disabled={resettingCooldown || creditsLocked}
+              className="shrink-0 rounded-full border border-amber-700 px-4 py-2 text-sm font-semibold text-amber-900 transition hover:bg-amber-100/80 disabled:opacity-40"
+              onClick={async () => {
+                if (creditsLocked) return;
+                setResettingCooldown(true);
+                try {
+                  await onPatch(project.id, { resetCooldown: true });
+                  const name = project.displayName || "Untitled project";
+                  onToast(`Cooldown reset for ${name}.`);
+                } catch {
+                  // Parent surfaces patch errors.
+                } finally {
+                  setResettingCooldown(false);
+                }
+              }}
+            >
+              {resettingCooldown ? "Resetting…" : "Reset cooldown"}
+            </button>
+          </div>
+        ) : null}
+
         <div className="relative">
-          <div className={interactionLocked ? "opacity-40" : ""}>
+          <div
+            className={`grid gap-4 sm:grid-cols-2 ${
+              interactionLocked ? "opacity-40" : ""
+            }`}
+          >
             <OutlinedField
               label="Check about every"
               hint={
@@ -631,6 +747,33 @@ function ProjectCard({
                 }}
               >
                 {CHECK_INTERVAL_OPTIONS.map((minutes) => (
+                  <option key={minutes} value={minutes}>
+                    {formatCheckInterval(minutes)}
+                  </option>
+                ))}
+              </select>
+            </OutlinedField>
+            <OutlinedField
+              label="After an alert, pause checking for"
+              hint={
+                savingCooldown
+                  ? "Saving…"
+                  : HINTS.alertCooldown
+              }
+              muted={interactionLocked}
+            >
+              <select
+                disabled={interactionLocked || savingCooldown}
+                className="w-full bg-transparent py-1.5 text-sm outline-none disabled:cursor-not-allowed"
+                value={draftCooldown}
+                onChange={(e) => {
+                  if (interactionLocked || savingCooldown) return;
+                  const next = Number(e.target.value);
+                  setDraftCooldown(next);
+                  void saveCooldown(next);
+                }}
+              >
+                {COOLDOWN_INTERVAL_OPTIONS.map((minutes) => (
                   <option key={minutes} value={minutes}>
                     {formatCheckInterval(minutes)}
                   </option>
@@ -678,6 +821,9 @@ export default function DashboardPage() {
   const [projectId, setProjectId] = useState("");
   const [checkIntervalMinutes, setCheckIntervalMinutes] = useState(
     DEFAULT_CHECK_INTERVAL
+  );
+  const [alertCooldownMinutes, setAlertCooldownMinutes] = useState(
+    DEFAULT_ALERT_COOLDOWN
   );
   const [showAddErrors, setShowAddErrors] = useState(false);
   const [error, setError] = useState("");
@@ -880,10 +1026,12 @@ export default function DashboardPage() {
         body: JSON.stringify({
           handshakeProjectId: projectId.trim(),
           checkIntervalMinutes,
+          alertCooldownMinutes,
         }),
       });
       setProjectId("");
       setCheckIntervalMinutes(DEFAULT_CHECK_INTERVAL);
+      setAlertCooldownMinutes(DEFAULT_ALERT_COOLDOWN);
       setShowAddErrors(false);
       if (typeof data.alertCredits === "number") {
         setAlertCredits(data.alertCredits);
@@ -949,6 +1097,9 @@ export default function DashboardPage() {
                 : data.project.lastAvailableCount,
               lastPolledAt,
               checkIntervalMinutes: data.project.checkIntervalMinutes,
+              alertCooldownMinutes: data.project.alertCooldownMinutes,
+              alertsCooldownUntil: data.project.alertsCooldownUntil,
+              onCooldown: data.project.onCooldown,
               lastAlertedAt: data.project.lastAlertedAt,
             };
           }
@@ -1036,7 +1187,7 @@ export default function DashboardPage() {
           <h2 className="text-lg font-semibold text-hs-ink">Add a project</h2>
           <p className="mt-1 text-sm text-hs-muted">
             Scroll down to paste a Handshake project UUID and choose how often
-            we check for claimable tasks.
+            we check for claimable tasks and how long to pause after an alert.
           </p>
         </div>
         <div className="p-6">
@@ -1091,6 +1242,24 @@ export default function DashboardPage() {
               }
             >
               {CHECK_INTERVAL_OPTIONS.map((minutes) => (
+                <option key={minutes} value={minutes}>
+                  {formatCheckInterval(minutes)}
+                </option>
+              ))}
+            </select>
+          </OutlinedField>
+          <OutlinedField
+            label="After an alert, pause checking for"
+            hint={HINTS.alertCooldown}
+          >
+            <select
+              className="w-full bg-transparent py-1.5 text-sm outline-none"
+              value={alertCooldownMinutes}
+              onChange={(e) =>
+                setAlertCooldownMinutes(Number(e.target.value))
+              }
+            >
+              {COOLDOWN_INTERVAL_OPTIONS.map((minutes) => (
                 <option key={minutes} value={minutes}>
                   {formatCheckInterval(minutes)}
                 </option>

@@ -46,6 +46,9 @@ export type Project = {
   displayName: string | null;
   alertsEnabled: boolean;
   checkIntervalMinutes: number;
+  alertCooldownMinutes: number;
+  alertsCooldownUntil: string | null;
+  onCooldown: boolean;
   lastAvailableCount: number | null;
   lastPolledAt: string | null;
   lastAlertedAt: string | null;
@@ -56,6 +59,9 @@ export const CHECK_INTERVAL_OPTIONS = [
   ...(TEST_MODE ? ([1] as const) : ([] as const)),
   10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 160, 170, 180,
 ] as const;
+
+/** Same choices as check interval — used for post-alert cooldown duration. */
+export const COOLDOWN_INTERVAL_OPTIONS = CHECK_INTERVAL_OPTIONS;
 
 export function formatCheckInterval(minutes: number) {
   if (minutes === 1) return "1 minute";
