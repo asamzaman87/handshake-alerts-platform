@@ -383,6 +383,53 @@ function RefreshButton({
     </button>
   );
 }
+function CopyableProjectId({ id }: { id: string }) {
+  const [copied, setCopied] = useState(false);
+  const resetRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (resetRef.current !== null) {
+        window.clearTimeout(resetRef.current);
+      }
+    };
+  }, []);
+
+  async function handleCopy() {
+    try {
+      await navigator.clipboard.writeText(id);
+      setCopied(true);
+      if (resetRef.current !== null) {
+        window.clearTimeout(resetRef.current);
+      }
+      resetRef.current = window.setTimeout(() => {
+        setCopied(false);
+        resetRef.current = null;
+      }, 2000);
+    } catch {
+      // Clipboard may be unavailable in some browsers/contexts.
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => void handleCopy()}
+      className="group mt-1 flex w-full max-w-full items-center gap-2 rounded-md py-0.5 text-left transition hover:bg-white/60"
+      aria-label={copied ? "Project ID copied" : "Copy project ID"}
+    >
+      <span className="min-w-0 truncate font-mono text-xs text-hs-muted">{id}</span>
+      <span
+        className={`shrink-0 font-sans text-[11px] font-semibold tracking-wide ${
+          copied ? "text-emerald-700" : "text-hs-muted opacity-0 group-hover:opacity-100"
+        }`}
+      >
+        {copied ? "Copied" : "Click to copy"}
+      </span>
+    </button>
+  );
+}
+
 function ProjectCard({
   project,
   refreshingTasks,
@@ -514,9 +561,7 @@ function ProjectCard({
                 onClick={() => onRefreshTasks(project.id)}
               />
             </div>
-            <p className="mt-1 truncate font-mono text-xs text-hs-muted">
-              {project.handshakeProjectId}
-            </p>
+            <CopyableProjectId id={project.handshakeProjectId} />
           </div>
           <div className="flex shrink-0 items-center gap-3">
             <AlertsToggle
