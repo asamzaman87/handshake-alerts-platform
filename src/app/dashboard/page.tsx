@@ -604,25 +604,11 @@ function ProjectCard({
           <button
             type="button"
             className="ml-auto rounded-full border border-red-200 px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-50 disabled:opacity-40"
-            disabled={interactionLocked}
+            disabled={creditsLocked}
             onClick={() => setConfirmDelete(true)}
           >
             Delete
           </button>
-          {!creditsLocked && alertsLocked ? (
-            <button
-              type="button"
-              className="absolute inset-0 z-10 cursor-pointer"
-              aria-label="Alerts are off"
-              onClick={() =>
-                onBlocked({
-                  title: "Alerts are off",
-                  message:
-                    "Turn alerts on for this project if you want to edit settings or delete it.",
-                })
-              }
-            />
-          ) : null}
         </div>
       </div>
       {confirmDelete ? (
