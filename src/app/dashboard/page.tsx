@@ -624,7 +624,7 @@ function ProjectCard({
     onBlocked({
       title: "Alert is off",
       message:
-        "Turn the alert on for this project to change how often we check for tasks or how long we pause after an alert.",
+        "Turn the alert on for this project to reset the cooldown or change how often we check for tasks and how long we pause after an alert.",
     });
   }
 
@@ -698,34 +698,48 @@ function ProjectCard({
         </div>
 
         {project.onCooldown && project.alertsCooldownUntil ? (
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-amber-50 px-4 py-3">
-            <p className="text-sm text-amber-900">
-              Cooldown time remaining:{" "}
-              <span className="tabular-nums font-semibold">
-                {cooldownRemainingLabel(project.alertsCooldownUntil, now)}
-              </span>
-              . We will start checking this project again then.
-            </p>
-            <button
-              type="button"
-              disabled={resettingCooldown || creditsLocked}
-              className="shrink-0 rounded-full border border-amber-700 px-4 py-2 text-sm font-semibold text-amber-900 transition hover:bg-amber-100/80 disabled:opacity-40"
-              onClick={async () => {
-                if (creditsLocked) return;
-                setResettingCooldown(true);
-                try {
-                  await onPatch(project.id, { resetCooldown: true });
-                  const name = project.displayName || "Untitled project";
-                  onToast(`Cooldown reset for ${name}.`);
-                } catch {
-                  // Parent surfaces patch errors.
-                } finally {
-                  setResettingCooldown(false);
-                }
-              }}
+          <div className="relative">
+            <div
+              className={`flex flex-wrap items-center justify-between gap-3 rounded-xl bg-amber-50 px-4 py-3 ${
+                alertsLocked ? "opacity-40" : ""
+              }`}
             >
-              {resettingCooldown ? "Resetting…" : "Reset cooldown"}
-            </button>
+              <p className="text-sm text-amber-900">
+                Cooldown time remaining:{" "}
+                <span className="tabular-nums font-semibold">
+                  {cooldownRemainingLabel(project.alertsCooldownUntil, now)}
+                </span>
+                . We will start checking this project again then.
+              </p>
+              <button
+                type="button"
+                disabled={resettingCooldown || creditsLocked || alertsLocked}
+                className="shrink-0 rounded-full border border-amber-700 px-4 py-2 text-sm font-semibold text-amber-900 transition hover:bg-amber-100/80 disabled:opacity-40"
+                onClick={async () => {
+                  if (creditsLocked || alertsLocked) return;
+                  setResettingCooldown(true);
+                  try {
+                    await onPatch(project.id, { resetCooldown: true });
+                    const name = project.displayName || "Untitled project";
+                    onToast(`Cooldown reset for ${name}.`);
+                  } catch {
+                    // Parent surfaces patch errors.
+                  } finally {
+                    setResettingCooldown(false);
+                  }
+                }}
+              >
+                {resettingCooldown ? "Resetting…" : "Reset cooldown"}
+              </button>
+            </div>
+            {!creditsLocked && alertsLocked ? (
+              <button
+                type="button"
+                className="absolute inset-0 z-10 cursor-pointer rounded-xl"
+                aria-label="Alert is off"
+                onClick={showAlertsOffModal}
+              />
+            ) : null}
           </div>
         ) : null}
 
