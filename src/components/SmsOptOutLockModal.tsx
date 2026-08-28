@@ -1,39 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
-import { api } from "@/lib/api";
 import { ALERT_FROM_NUMBER_DISPLAY } from "@/lib/constants";
 
-type Props = {
-  onResumed: () => void;
-};
-
-/** Blocking modal while the user has replied STOP. Clears after Twilio START is received. */
-export function SmsOptOutLockModal({ onResumed }: Props) {
-  useEffect(() => {
-    let cancelled = false;
-
-    async function poll() {
-      try {
-        const data = await api<{ user: { smsOptedOut?: boolean } }>(
-          "/api/handshake/me"
-        );
-        if (!cancelled && !data.user.smsOptedOut) {
-          onResumed();
-        }
-      } catch {
-        // ignore transient errors while polling
-      }
-    }
-
-    void poll();
-    const id = window.setInterval(poll, 4000);
-    return () => {
-      cancelled = true;
-      window.clearInterval(id);
-    };
-  }, [onResumed]);
-
+/** Blocking modal while the user has replied STOP. Parent polls /me and dismisses when cleared. */
+export function SmsOptOutLockModal() {
   return (
     <div
       className="fixed inset-0 z-[70] flex items-center justify-center px-4"

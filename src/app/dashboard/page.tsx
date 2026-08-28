@@ -21,6 +21,10 @@ import {
 import { TEST_MODE, TEST_MODE_TASK_COUNT } from "@/lib/constants";
 
 const DEFAULT_CHECK_INTERVAL = 10;
+/** User balance + SMS opt-out while dashboard is open. */
+const ME_POLL_MS = 8_000;
+/** Project last-check and task counts while dashboard is open. */
+const PROJECTS_POLL_MS = 30_000;
 
 const HINTS = {
   projectId:
@@ -794,20 +798,61 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!ready) return;
-    const refresh = () => {
-      void loadCredits().catch(() => undefined);
-    };
+
+    let cancelled = false;
+
+    async function refreshMe() {
+      if (cancelled || document.visibilityState !== "visible") return;
+      try {
+        await loadCredits();
+      } catch (err) {
+        if (String((err as Error)?.message ?? "").includes("Unauthorized")) {
+          clearToken();
+          router.replace("/sign-in");
+        }
+      }
+    }
+
+    async function refreshProjects() {
+      if (cancelled || document.visibilityState !== "visible") return;
+      try {
+        const data = await api<{ projects: Project[] }>("/api/handshake/projects");
+        if (!cancelled) setProjects(data.projects);
+      } catch (err) {
+        if (String((err as Error)?.message ?? "").includes("Unauthorized")) {
+          clearToken();
+          router.replace("/sign-in");
+        }
+      }
+    }
+
+    function refreshAll() {
+      void refreshMe();
+      void refreshProjects();
+    }
+
     const onVisible = () => {
-      if (document.visibilityState === "visible") refresh();
+      if (document.visibilityState === "visible") refreshAll();
     };
-    window.addEventListener("focus", refresh);
+
+    window.addEventListener("focus", onVisible);
     document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("pageshow", onVisible);
+
+    void refreshMe();
+    const meTimer = window.setInterval(refreshMe, ME_POLL_MS);
+    const projectsTimer = window.setInterval(refreshProjects, PROJECTS_POLL_MS);
+
     return () => {
-      window.removeEventListener("focus", refresh);
+      cancelled = true;
+      window.clearInterval(meTimer);
+      window.clearInterval(projectsTimer);
+      window.removeEventListener("focus", onVisible);
       document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("pageshow", onVisible);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- reload balance when returning from checkout
-  }, [ready]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- poll + tab-focus refresh while dashboard is open
+  }, [ready, router]);
 
   useEffect(() => {
     if (!addError) return;
@@ -1140,14 +1185,7 @@ export default function DashboardPage() {
         )}
       </div>
       {outOfCredits ? <ZeroCreditsLockModal stacked={smsOptedOut} /> : null}
-      {smsOptedOut ? (
-        <SmsOptOutLockModal
-          onResumed={() => {
-            setSmsOptedOut(false);
-            void loadCredits().catch(() => undefined);
-          }}
-        />
-      ) : null}
+      {smsOptedOut ? <SmsOptOutLockModal /> : null}
       {!outOfCredits && !smsOptedOut && showWelcome ? (
         <WelcomeCreditsModal onClose={() => setShowWelcome(false)} />
       ) : null}
