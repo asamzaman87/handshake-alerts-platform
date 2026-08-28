@@ -870,6 +870,7 @@ export default function DashboardPage() {
   const [addError, setAddError] = useState("");
   const [notice, setNotice] = useState("");
   const addErrorRef = useRef<HTMLParagraphElement>(null);
+  const projectIdFieldRef = useRef<HTMLDivElement>(null);
   const [busy, setBusy] = useState(false);
   const [refreshingTasksId, setRefreshingTasksId] = useState<string | null>(null);
   const [retryingLoad, setRetryingLoad] = useState(false);
@@ -1040,10 +1041,23 @@ export default function DashboardPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- poll + tab-focus refresh while dashboard is open
   }, [ready, router]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!addError) return;
-    addErrorRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    const el = addErrorRef.current;
+    if (!el) return;
+    requestAnimationFrame(() => {
+      el.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+    });
   }, [addError]);
+
+  useLayoutEffect(() => {
+    if (!showAddErrors || projectId.trim()) return;
+    const el = projectIdFieldRef.current;
+    if (!el) return;
+    requestAnimationFrame(() => {
+      el.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+    });
+  }, [showAddErrors, projectId]);
 
   async function addProject(e: FormEvent) {
     e.preventDefault();
@@ -1244,32 +1258,30 @@ export default function DashboardPage() {
             allowFullScreen
           />
         </div>
-        {addError ? (
-          <p
-            ref={addErrorRef}
-            className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
-          >
-            {addError}
-          </p>
-        ) : null}
         <div className="mt-6 grid gap-4">
-          <OutlinedField
-            label="Project ID"
-            hint={HINTS.projectId}
-            invalid={
-              (showAddErrors && !projectId.trim()) ||
-              Boolean(addError && isProjectIdAddError(addError))
-            }
-          >
-            <input
-              className="w-full bg-transparent py-1.5 font-mono text-sm outline-none"
-              value={projectId}
-              onChange={(e) => {
-                setProjectId(e.target.value);
-                if (addError) setAddError("");
-              }}
-            />
-          </OutlinedField>
+          <div ref={projectIdFieldRef} className="scroll-mt-28">
+            <OutlinedField
+              label="Project ID"
+              hint={HINTS.projectId}
+              invalid={
+                (showAddErrors && !projectId.trim()) ||
+                Boolean(addError && isProjectIdAddError(addError))
+              }
+            >
+              <input
+                className="w-full bg-transparent py-1.5 font-mono text-sm outline-none"
+                value={projectId}
+                onChange={(e) => {
+                  setProjectId(e.target.value);
+                  if (addError) setAddError("");
+                  if (showAddErrors) setShowAddErrors(false);
+                }}
+              />
+            </OutlinedField>
+            {showAddErrors && !projectId.trim() ? (
+              <p className="mt-2 text-sm text-red-700">Enter a Handshake project ID.</p>
+            ) : null}
+          </div>
           <OutlinedField
             label="Check about every"
             hint={HINTS.checkInterval}
@@ -1306,6 +1318,14 @@ export default function DashboardPage() {
               ))}
             </select>
           </OutlinedField>
+          {addError ? (
+            <p
+              ref={addErrorRef}
+              className="scroll-mt-28 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+            >
+              {addError}
+            </p>
+          ) : null}
           <button
             type="submit"
             disabled={busy}
