@@ -60,8 +60,8 @@ export const CHECK_INTERVAL_OPTIONS = [
   10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 160, 170, 180,
 ] as const;
 
-/** Same choices as check interval — used for post-alert cooldown duration. */
-export const COOLDOWN_INTERVAL_OPTIONS = CHECK_INTERVAL_OPTIONS;
+/** Check interval choices plus a no-pause option for post-alert cooldown. */
+export const COOLDOWN_INTERVAL_OPTIONS = [0, ...CHECK_INTERVAL_OPTIONS] as const;
 
 export function formatCheckInterval(minutes: number) {
   if (minutes === 1) return "1 minute";
@@ -70,4 +70,9 @@ export function formatCheckInterval(minutes: number) {
   const hours = minutes / 60;
   if (Number.isInteger(hours)) return `${hours} hours`;
   return `${minutes} minutes`;
+}
+
+export function formatCooldownInterval(minutes: number) {
+  if (minutes === 0) return "No pause — keep checking normally";
+  return formatCheckInterval(minutes);
 }

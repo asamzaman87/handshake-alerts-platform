@@ -16,6 +16,7 @@ import {
   COOLDOWN_INTERVAL_OPTIONS,
   clearToken,
   formatCheckInterval,
+  formatCooldownInterval,
   getToken,
   type Project,
 } from "@/lib/api";
@@ -34,7 +35,7 @@ const HINTS = {
   checkInterval:
     "How often we look for claimable tasks on this project. Times are approximate.",
   alertCooldown:
-    "After we text you about available tasks, we pause checking this project for this long before looking again.",
+    "After we text you about available tasks, we can pause checking for a while. Choose “No pause” to keep checking on your normal schedule with no cooldown.",
 };
 
 function isProjectIdAddError(message: string) {
@@ -775,7 +776,7 @@ function ProjectCard({
               >
                 {COOLDOWN_INTERVAL_OPTIONS.map((minutes) => (
                   <option key={minutes} value={minutes}>
-                    {formatCheckInterval(minutes)}
+                    {formatCooldownInterval(minutes)}
                   </option>
                 ))}
               </select>
@@ -1261,7 +1262,7 @@ export default function DashboardPage() {
             >
               {COOLDOWN_INTERVAL_OPTIONS.map((minutes) => (
                 <option key={minutes} value={minutes}>
-                  {formatCheckInterval(minutes)}
+                  {formatCooldownInterval(minutes)}
                 </option>
               ))}
             </select>
