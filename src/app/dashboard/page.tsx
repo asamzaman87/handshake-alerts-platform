@@ -8,6 +8,7 @@ import { AlertNumberBanner } from "@/components/AlertNumberBanner";
 import { CreditsBanner } from "@/components/CreditsBanner";
 import { WelcomeCreditsModal } from "@/components/WelcomeCreditsModal";
 import { ZeroCreditsLockModal } from "@/components/ZeroCreditsLockModal";
+import { SmsOptOutLockModal } from "@/components/SmsOptOutLockModal";
 import { ToastStack, type ToastItem } from "@/components/ToastStack";
 import {
   api,
@@ -17,7 +18,7 @@ import {
   getToken,
   type Project,
 } from "@/lib/api";
-import { ALERT_FROM_NUMBER_DISPLAY, TEST_MODE, TEST_MODE_TASK_COUNT } from "@/lib/constants";
+import { TEST_MODE, TEST_MODE_TASK_COUNT } from "@/lib/constants";
 
 const DEFAULT_CHECK_INTERVAL = 10;
 
@@ -981,18 +982,6 @@ export default function DashboardPage() {
       <div className="mx-auto max-w-5xl px-6 py-10">
       <AlertNumberBanner />
 
-      {smsOptedOut ? (
-        <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm leading-relaxed text-amber-950">
-          <p className="font-semibold">SMS alerts are paused</p>
-          <p className="mt-2">
-            You replied STOP, so we paused texts and stopped using credits. Your
-            alert settings are unchanged. Text{" "}
-            <span className="font-semibold">START</span> to{" "}
-            {ALERT_FROM_NUMBER_DISPLAY} to resume alerts.
-          </p>
-        </div>
-      ) : null}
-
       <form
         id="add-project"
         onSubmit={addProject}
@@ -1150,8 +1139,16 @@ export default function DashboardPage() {
           </>
         )}
       </div>
-      {outOfCredits ? <ZeroCreditsLockModal /> : null}
-      {!outOfCredits && showWelcome ? (
+      {outOfCredits ? <ZeroCreditsLockModal stacked={smsOptedOut} /> : null}
+      {smsOptedOut ? (
+        <SmsOptOutLockModal
+          onResumed={() => {
+            setSmsOptedOut(false);
+            void loadCredits().catch(() => undefined);
+          }}
+        />
+      ) : null}
+      {!outOfCredits && !smsOptedOut && showWelcome ? (
         <WelcomeCreditsModal onClose={() => setShowWelcome(false)} />
       ) : null}
       {blocked ? (

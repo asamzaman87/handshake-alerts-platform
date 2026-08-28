@@ -2,18 +2,33 @@
 
 import Link from "next/link";
 
+type Props = {
+  /** When true, sit below the SMS opt-out modal (lower z-index and shifted down). */
+  stacked?: boolean;
+};
+
 /** Blocking modal while the account has 0 alert credits. Only clears after balance > 0. */
-export function ZeroCreditsLockModal() {
+export function ZeroCreditsLockModal({ stacked = false }: Props) {
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center px-4"
+      className={`fixed inset-0 flex justify-center px-4 ${
+        stacked
+          ? "z-[61] items-start pt-[min(28rem,calc(100vh-12rem))]"
+          : "z-[60] items-center"
+      }`}
       role="alertdialog"
       aria-modal="true"
       aria-labelledby="zero-credits-title"
       aria-describedby="zero-credits-desc"
     >
-      <div className="absolute inset-0 bg-hs-dark/50 backdrop-blur-sm" />
-      <div className="relative z-[1] w-full max-w-md overflow-hidden rounded-3xl border border-red-200 bg-white p-7 shadow-card">
+      {!stacked ? (
+        <div className="absolute inset-0 bg-hs-dark/50 backdrop-blur-sm" />
+      ) : null}
+      <div
+        className={`relative z-[1] w-full max-w-md overflow-hidden rounded-3xl border border-red-200 bg-white p-7 shadow-card ${
+          stacked ? "opacity-95 shadow-lg" : ""
+        }`}
+      >
         <div className="absolute inset-x-0 top-0 h-1.5 bg-red-600" />
         <p className="text-sm font-semibold uppercase tracking-[0.16em] text-red-700">
           Out of credits
