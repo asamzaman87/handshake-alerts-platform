@@ -58,10 +58,10 @@ export const CHECK_INTERVAL_OPTIONS = [
 ] as const;
 
 export function formatCheckInterval(minutes: number) {
-  if (minutes === 1) return "About every 1 minute";
-  if (minutes < 60) return `About every ${minutes} minutes`;
-  if (minutes === 60) return "About every 1 hour";
+  if (minutes === 1) return "1 minute";
+  if (minutes < 60) return `${minutes} minutes`;
+  if (minutes === 60) return "1 hour";
   const hours = minutes / 60;
-  if (Number.isInteger(hours)) return `About every ${hours} hours`;
-  return `About every ${minutes} minutes`;
+  if (Number.isInteger(hours)) return `${hours} hours`;
+  return `${minutes} minutes`;
 }
