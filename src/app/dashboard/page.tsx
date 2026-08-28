@@ -38,10 +38,6 @@ const HINTS = {
     "After we text you about available tasks, we can pause checking for a while. Choose “No pause” to keep checking on your normal schedule with no cooldown.",
 };
 
-function isProjectIdAddError(message: string) {
-  return /project|uuid|already added|inaccessible|invalid/i.test(message);
-}
-
 const TOOLTIP_WIDTH = 224; // w-56
 const TOOLTIP_GAP = 8;
 const VIEWPORT_PAD = 12;
@@ -869,7 +865,6 @@ export default function DashboardPage() {
   const [error, setError] = useState("");
   const [addError, setAddError] = useState("");
   const [notice, setNotice] = useState("");
-  const addErrorRef = useRef<HTMLParagraphElement>(null);
   const projectIdFieldRef = useRef<HTMLDivElement>(null);
   const [busy, setBusy] = useState(false);
   const [refreshingTasksId, setRefreshingTasksId] = useState<string | null>(null);
@@ -1042,22 +1037,15 @@ export default function DashboardPage() {
   }, [ready, router]);
 
   useLayoutEffect(() => {
-    if (!addError) return;
-    const el = addErrorRef.current;
-    if (!el) return;
-    requestAnimationFrame(() => {
-      el.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
-    });
-  }, [addError]);
-
-  useLayoutEffect(() => {
-    if (!showAddErrors || projectId.trim()) return;
+    const shouldScroll =
+      Boolean(addError) || (showAddErrors && !projectId.trim());
+    if (!shouldScroll) return;
     const el = projectIdFieldRef.current;
     if (!el) return;
     requestAnimationFrame(() => {
       el.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
     });
-  }, [showAddErrors, projectId]);
+  }, [addError, showAddErrors, projectId]);
 
   async function addProject(e: FormEvent) {
     e.preventDefault();
@@ -1264,8 +1252,7 @@ export default function DashboardPage() {
               label="Project ID"
               hint={HINTS.projectId}
               invalid={
-                (showAddErrors && !projectId.trim()) ||
-                Boolean(addError && isProjectIdAddError(addError))
+                (showAddErrors && !projectId.trim()) || Boolean(addError)
               }
             >
               <input
@@ -1278,8 +1265,12 @@ export default function DashboardPage() {
                 }}
               />
             </OutlinedField>
-            {showAddErrors && !projectId.trim() ? (
-              <p className="mt-2 text-sm text-red-700">Enter a Handshake project ID.</p>
+            {(showAddErrors && !projectId.trim()) || addError ? (
+              <p className="mt-2 text-sm text-red-700">
+                {showAddErrors && !projectId.trim()
+                  ? "Enter a Handshake project ID."
+                  : addError}
+              </p>
             ) : null}
           </div>
           <OutlinedField
@@ -1318,14 +1309,6 @@ export default function DashboardPage() {
               ))}
             </select>
           </OutlinedField>
-          {addError ? (
-            <p
-              ref={addErrorRef}
-              className="scroll-mt-28 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
-            >
-              {addError}
-            </p>
-          ) : null}
           <button
             type="submit"
             disabled={busy}
