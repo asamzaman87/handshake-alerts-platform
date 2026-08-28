@@ -44,9 +44,19 @@ const VIEWPORT_PAD = 12;
 
 function isAddFormFieldInView(el: HTMLElement) {
   const rect = el.getBoundingClientRect();
-  const topBound = 112; // matches scroll-mt-28 for fixed header clearance
-  const bottomBound = window.innerHeight - VIEWPORT_PAD;
-  return rect.top >= topBound && rect.bottom <= bottomBound;
+  const pad = VIEWPORT_PAD;
+  const viewHeight = window.innerHeight;
+
+  if (rect.bottom <= pad || rect.top >= viewHeight - pad) {
+    return false;
+  }
+
+  const visibleTop = Math.max(rect.top, pad);
+  const visibleBottom = Math.min(rect.bottom, viewHeight - pad);
+  const visibleHeight = visibleBottom - visibleTop;
+  const totalHeight = Math.max(rect.height, 1);
+
+  return visibleHeight >= totalHeight * 0.98;
 }
 
 function FieldHint({ text }: { text: string }) {
@@ -1048,11 +1058,8 @@ export default function DashboardPage() {
       Boolean(addError) || (showAddErrors && !projectId.trim());
     if (!shouldScroll) return;
     const el = projectIdFieldRef.current;
-    if (!el) return;
-    requestAnimationFrame(() => {
-      if (isAddFormFieldInView(el)) return;
-      el.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
-    });
+    if (!el || isAddFormFieldInView(el)) return;
+    el.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
   }, [addError, showAddErrors, projectId]);
 
   async function addProject(e: FormEvent) {
