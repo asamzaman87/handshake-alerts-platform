@@ -17,7 +17,7 @@ import {
   getToken,
   type Project,
 } from "@/lib/api";
-import { TEST_MODE, TEST_MODE_TASK_COUNT } from "@/lib/constants";
+import { ALERT_FROM_NUMBER_DISPLAY, TEST_MODE, TEST_MODE_TASK_COUNT } from "@/lib/constants";
 
 const DEFAULT_CHECK_INTERVAL = 10;
 
@@ -230,11 +230,11 @@ function AlertsToggle({
       type="button"
       role="switch"
       aria-checked={on}
-      aria-label="Alerts"
+      aria-label={on ? "Alert on" : "Alert off"}
       onClick={onToggle}
       className="inline-flex items-center gap-2 text-sm"
     >
-      <span className="text-hs-muted">Alerts</span>
+      <span className="text-hs-muted">Alert</span>
       <span
         className={`relative inline-flex h-7 w-14 shrink-0 items-center rounded-full transition-colors ${
           on ? "bg-hs-dark" : "bg-hs-line"
@@ -528,9 +528,9 @@ function ProjectCard({
 
   function showAlertsOffModal() {
     onBlocked({
-      title: "Alerts are off",
+      title: "Alert is off",
       message:
-        "Turn alerts on for this project if you want to change how often we check.",
+        "Turn the alert on for this project to change how often we check for tasks.",
     });
   }
 
@@ -637,7 +637,7 @@ function ProjectCard({
             <button
               type="button"
               className="absolute inset-0 z-10 cursor-pointer rounded-xl"
-              aria-label="Alerts are off"
+              aria-label="Alert is off"
               onClick={showAlertsOffModal}
             />
           ) : null}
@@ -669,6 +669,7 @@ export default function DashboardPage() {
   const [ready, setReady] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
   const [alertCredits, setAlertCredits] = useState<number | null>(null);
+  const [smsOptedOut, setSmsOptedOut] = useState(false);
   const [projectId, setProjectId] = useState("");
   const [checkIntervalMinutes, setCheckIntervalMinutes] = useState(
     DEFAULT_CHECK_INTERVAL
@@ -701,9 +702,10 @@ export default function DashboardPage() {
 
   async function loadCredits() {
     const data = await api<{
-      user: { alertCredits: number; welcomeSeen?: boolean };
+      user: { alertCredits: number; welcomeSeen?: boolean; smsOptedOut?: boolean };
     }>("/api/handshake/me");
     setAlertCredits(data.user.alertCredits);
+    setSmsOptedOut(Boolean(data.user.smsOptedOut));
     if (data.user.welcomeSeen === false) {
       setShowWelcome(true);
     }
@@ -959,15 +961,15 @@ export default function DashboardPage() {
               Manage Handshake project alerts
             </h1>
             <p className="mt-3 max-w-xl text-base leading-relaxed text-hs-muted">
-              Add projects, turn alerts on or off, and choose how often we check
-              for claimable tasks.
+              Add projects, turn each project&apos;s alert on or off, and choose
+              how often we check for tasks.
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
               <span className="rounded-full border border-hs-line bg-hs-bg px-4 py-2 text-sm font-medium text-hs-ink">
                 {projects.length} project{projects.length === 1 ? "" : "s"}
               </span>
               <span className="rounded-full border border-hs-line bg-hs-bg px-4 py-2 text-sm font-medium text-hs-ink">
-                {alertsOn} alert{alertsOn === 1 ? "" : "s"} on
+                {alertsOn} project{alertsOn === 1 ? "" : "s"} monitoring
               </span>
             </div>
           </div>
@@ -978,6 +980,18 @@ export default function DashboardPage() {
       <div className="relative">
       <div className="mx-auto max-w-5xl px-6 py-10">
       <AlertNumberBanner />
+
+      {smsOptedOut ? (
+        <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm leading-relaxed text-amber-950">
+          <p className="font-semibold">SMS alerts are paused</p>
+          <p className="mt-2">
+            You replied STOP, so we turned off monitoring and stopped using
+            credits. Text <span className="font-semibold">START</span> to{" "}
+            {ALERT_FROM_NUMBER_DISPLAY}, then turn the alert back on for each
+            project below.
+          </p>
+        </div>
+      ) : null}
 
       <form
         id="add-project"

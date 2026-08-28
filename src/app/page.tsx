@@ -55,8 +55,8 @@ export default function HomePage() {
               Get a text when Handshake tasks show up.
             </h1>
             <p className="mt-5 text-lg leading-relaxed text-hs-muted">
-              {SITE_DESCRIPTION} Turn alerts on per project, set limits you
-              control, and get notified when claimable tasks are waiting.
+              {SITE_DESCRIPTION} Turn an alert on for each project, set limits
+              you control, and get notified when claimable tasks are waiting.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Link href="/sign-in/" className="btn-accent">
@@ -123,11 +123,12 @@ export default function HomePage() {
               What you&apos;ll see
             </p>
             <p className="mt-3 text-2xl font-semibold leading-snug">
-              A dashboard to manage alerts per project.
+              A dashboard to manage each project&apos;s alert.
             </p>
             <p className="mt-3 text-sm leading-relaxed text-white/70">
-              Toggle alerts on or off, refresh task counts, choose how often we
-              check each project, and delete ones you no longer need.
+              Turn each project&apos;s alert on or off, refresh task counts,
+              choose how often we check each project, and delete ones you no
+              longer need.
             </p>
             <Link
               href="/sign-in/"
@@ -144,7 +145,7 @@ export default function HomePage() {
           Ready to get notified?
         </h2>
         <p className="mx-auto mt-3 max-w-xl text-white/70">
-          Sign in with your phone, add a project ID, and turn alerts on.
+          Sign in with your phone, add a project ID, and turn the alert on.
         </p>
         <Link href="/sign-in/" className="btn-accent mt-8">
           Sign in

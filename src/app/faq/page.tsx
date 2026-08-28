@@ -20,11 +20,11 @@ const FAQ = [
   },
   {
     q: "When will I get a text?",
-    a: "When we find more than two claimable tasks on a project where alerts are on and you still have alert credits.",
+    a: "When we find more than two claimable tasks on a project where the alert is on and you still have alert credits.",
   },
   {
     q: "How do I stop texts?",
-    a: "Reply STOP to any message, turn alerts off for a project in your dashboard, delete the project, or sign out.",
+    a: "Reply STOP to any message, turn the alert off for a project in your dashboard, delete the project, or sign out.",
   },
   {
     q: "What kinds of texts will I get?",

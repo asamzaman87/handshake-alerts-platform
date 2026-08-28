@@ -16,7 +16,7 @@ export function ProductPreview() {
               </p>
             </div>
             <span className="rounded-full bg-hs-dark px-3 py-1 text-xs font-medium text-white">
-              Alerts On
+              Alert on
             </span>
           </div>
           <div className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
@@ -34,7 +34,7 @@ export function ProductPreview() {
           </p>
         </div>
         <div className="rounded-xl border border-dashed border-hs-line px-4 py-3 text-center text-sm text-hs-muted">
-          Add projects, toggle alerts, and choose how often we check.
+          Add projects, turn each alert on or off, and choose how often we check.
         </div>
       </div>
     </div>

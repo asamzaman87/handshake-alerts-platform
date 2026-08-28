@@ -30,7 +30,7 @@ export function ZeroCreditsLockModal() {
         >
           Without credits we can’t text you when claimable tasks show up, and
           your projects stay locked until you top up. Buy a credit pack to turn
-          alerts back on.
+          monitoring back on.
         </p>
         <p className="mt-3 text-sm font-semibold text-red-700">
           You won’t get any more alerts until you buy more credits.

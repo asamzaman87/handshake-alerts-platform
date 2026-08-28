@@ -112,8 +112,8 @@ export function WelcomeCreditsModal({ onClose }: { onClose: () => void }) {
           on a project you’re watching.
         </p>
         <p className="mt-3 text-sm leading-relaxed text-hs-muted">
-          Add a project below, keep alerts on, and we’ll text you when it’s time
-          to claim. When you’re ready for more, grab a credit pack anytime.
+          Add a project below, turn its alert on, and we’ll text you when it’s
+          time to claim. When you’re ready for more, grab a credit pack anytime.
         </p>
         <div className="mt-5 inline-flex items-center rounded-full border border-hs-line bg-hs-bg px-4 py-2 text-sm font-semibold text-hs-ink">
           5 free credits ready
