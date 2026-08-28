@@ -483,6 +483,22 @@ function ProjectCard({
     });
   }
 
+  function showAlertsOffModal() {
+    onBlocked({
+      title: "Alerts are off",
+      message:
+        "Turn alerts on for this project if you want to change how often we check.",
+    });
+  }
+
+  function showAlertsOffSettingsModal() {
+    onBlocked({
+      title: "Alerts are off",
+      message:
+        "Turn alerts on for this project if you want to edit settings.",
+    });
+  }
+
   return (
     <li
       className={`relative overflow-hidden rounded-2xl border border-hs-line bg-white shadow-card ${
@@ -573,13 +589,7 @@ function ProjectCard({
               type="button"
               className="absolute inset-0 z-10 cursor-pointer rounded-xl"
               aria-label="Alerts are off"
-              onClick={() =>
-                onBlocked({
-                  title: "Alerts are off",
-                  message:
-                    "Turn alerts on for this project if you want to change how often we check.",
-                })
-              }
+              onClick={showAlertsOffModal}
             />
           ) : null}
         </div>
@@ -587,17 +597,37 @@ function ProjectCard({
         <div className="relative flex flex-wrap items-center gap-3 border-t border-hs-line pt-4">
           <button
             type="button"
-            className="btn-primary-sm disabled:opacity-40"
-            disabled={interactionLocked || !dirty || saving}
-            onClick={() => saveEdits()}
+            className={`btn-primary-sm ${
+              creditsLocked || saving || (!alertsLocked && !dirty)
+                ? "disabled:opacity-40"
+                : ""
+            } ${alertsLocked && !creditsLocked ? "opacity-40" : ""}`}
+            disabled={creditsLocked || saving || (!alertsLocked && !dirty)}
+            onClick={() => {
+              if (alertsLocked) {
+                showAlertsOffSettingsModal();
+                return;
+              }
+              void saveEdits();
+            }}
           >
             {saving ? "Saving…" : "Save changes"}
           </button>
           <button
             type="button"
-            className="rounded-full border border-hs-line px-4 py-2 text-sm font-semibold text-hs-ink transition hover:border-hs-ink disabled:opacity-40"
-            disabled={interactionLocked || !dirty || saving}
-            onClick={cancelEdits}
+            className={`rounded-full border border-hs-line px-4 py-2 text-sm font-semibold text-hs-ink transition hover:border-hs-ink ${
+              creditsLocked || saving || (!alertsLocked && !dirty)
+                ? "disabled:opacity-40"
+                : ""
+            } ${alertsLocked && !creditsLocked ? "opacity-40" : ""}`}
+            disabled={creditsLocked || saving || (!alertsLocked && !dirty)}
+            onClick={() => {
+              if (alertsLocked) {
+                showAlertsOffSettingsModal();
+                return;
+              }
+              cancelEdits();
+            }}
           >
             Cancel
           </button>
